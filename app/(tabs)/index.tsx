@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Button, Platform, StyleSheet, View } from 'react-native';
 
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
@@ -7,7 +7,61 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
 
+import type { User } from '@supabase/supabase-js';
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+
+export function LoginButton() {
+  const handleWebLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        // This tells Google where to send the user back to
+        redirectTo: window.location.origin, 
+      },
+    });
+
+    if (error) console.error("Login error:", error.message);
+  };
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Button title="Sign in with Google" onPress={handleWebLogin} />
+    </View>
+  );
+}
+export function SignOutButton() {
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error("Error signing out:", error.message);
+    else console.log("User signed out successfully");
+  };
+
+  return (
+    <View style={{ paddingVertical: 10 }}>
+      <Button title="Sign Out" onPress={handleSignOut} color="#FF3B30" /> 
+    </View>
+  );
+}
+
 export default function HomeScreen() {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    // 1. Check if a user is already logged in
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    };
+    checkUser();
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      console.log("Auth Event:", event);
+    });
+
+    return () => authListener.subscription.unsubscribe();
+  }, []);
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -20,6 +74,16 @@ export default function HomeScreen() {
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        {user ? (
+          <ThemedText type="subtitle">
+            ✅ Welcome, {user.email}!
+            <SignOutButton />
+          </ThemedText>
+        ) : (
+          <LoginButton /> 
+        )}
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
