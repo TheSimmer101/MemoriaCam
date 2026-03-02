@@ -11,15 +11,28 @@ import type { User } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const redirectUrl = AuthSession.makeRedirectUri({ 
+  scheme: 'memoriacam', 
+});
+
 export function LoginButton() {
   const handleWebLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         // This tells Google where to send the user back to
         redirectTo: window.location.origin, 
       },
     });
+
+    if (data?.url) {
+      await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);//redirect to app
+    }
 
     if (error) console.error("Login error:", error.message);
   };
