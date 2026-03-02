@@ -8,25 +8,68 @@ import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
 
 import type { User } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
-export function LoginButton() {
-  const handleWebLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        // This tells Google where to send the user back to
-        redirectTo: window.location.origin, 
-      },
-    });
+import * as WebBrowser from 'expo-web-browser';
 
-    if (error) console.error("Login error:", error.message);
+//  helper for Native OAuth
+WebBrowser.maybeCompleteAuthSession(); 
+
+
+WebBrowser.maybeCompleteAuthSession();
+
+export function LoginButton() {
+  const handleLogin = async () => {
+    if (Platform.OS === 'web') {
+      // Web: simple redirect
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) console.error("Login error:", error.message);
+
+    } else {
+      const redirectTo = Linking.createURL('/', { scheme: 'memoriacam' });
+      console.log("Redirect URI:", redirectTo);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true, // crucial — don't auto-redirect, we handle it
+        },
+      });
+
+      if (error) { console.error("OAuth error:", error.message); return; }
+
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+        if (result.type === 'success' && result.url) {
+          // Supabase returns tokens as hash fragments (#access_token=...) not query params
+          const url = result.url;
+          const params = new URLSearchParams(url.split('#')[1]);
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+
+          if (accessToken && refreshToken) {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+          } else {
+            console.error("Missing tokens in redirect URL:", url);
+          }
+        }
+      }
+    }
   };
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Button title="Sign in with Google" onPress={handleWebLogin} />
+      <Button title="Sign in with Google" onPress={handleLogin} />
     </View>
   );
 }
