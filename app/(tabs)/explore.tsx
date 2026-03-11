@@ -25,7 +25,17 @@ export default function TabTwoScreen() {
       
       <View style={{ margin: 16 }}>
           <Link href="/Video/recordingPreview">
-            <Button title="Preview" onPress={()=> {}} />
+            <View>
+              <Button title="Preview" onPress={()=> {}} />
+            </View>
+          </Link>
+        </View>
+
+      <View style={{ margin: 16 }}>
+          <Link href="/Audio/audioPreview">
+            <View>
+              <Button title="Audio Preview" onPress={()=> {}} />
+            </View>
           </Link>
         </View>
 
