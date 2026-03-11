@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Button, Platform, StyleSheet, View } from 'react-native';
+import { Button, Platform, StyleSheet, TextInput, View } from 'react-native';
 
 import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
@@ -17,8 +17,44 @@ import * as WebBrowser from 'expo-web-browser';
 //  helper for Native OAuth
 WebBrowser.maybeCompleteAuthSession(); 
 
+export function EmailAuth() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-WebBrowser.maybeCompleteAuthSession();
+  const handleEmailLogin = async () => {
+    const { data:loginData, error:loginError } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+    if (loginError && loginError.message.includes("Invalid login credentials")) {
+      console.log("User not found, attempting to create account...");
+      
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+      });
+      if (signUpError) console.error(signUpError.message);
+      else console.log("User signed in:", signUpData.user);
+    }
+  };
+  
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, borderRadius: 10 }}> 
+      <View style={{ 
+        borderWidth: 2, 
+        borderColor: '#333', 
+        padding: 20, 
+        borderRadius: 15, 
+        width: 340,
+        backgroundColor: '#fff' 
+      }}>
+        <TextInput style = {{ borderWidth: 1, width: 300, borderColor: 'gray', padding: 10, marginBottom: 10 }} value={email} onChangeText={setEmail} placeholder="Email" />
+        <TextInput style = {{ borderWidth: 1, width: 300, borderColor: 'gray', padding: 10, marginBottom: 10 }} value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry />
+        <Button color = "black" title="Sign in or Sign Up" onPress={handleEmailLogin} />
+      </View>
+    </View>
+  );
+}
 
 export function LoginButton() {
   const handleLogin = async () => {
@@ -29,6 +65,7 @@ export function LoginButton() {
         options: { redirectTo: window.location.origin },
       });
       if (error) console.error("Login error:", error.message);
+      
 
     } else {
       const redirectTo = Linking.createURL('/', { scheme: 'memoriacam' });
@@ -89,7 +126,7 @@ export function SignOutButton() {
 
 export default function HomeScreen() {
   const [user, setUser] = useState<User | null>(null);
-
+ const displayEmail = user?.user_metadata?.email || user?.email || "Guest";
   useEffect(() => {
     // 1. Check if a user is already logged in
     const checkUser = async () => {
@@ -121,11 +158,11 @@ export default function HomeScreen() {
       <ThemedView style={styles.stepContainer}>
         {user ? (
           <ThemedText type="subtitle">
-            ✅ Welcome, {user.email}!
+            ✅ Welcome, {displayEmail}!
             <SignOutButton />
           </ThemedText>
         ) : (
-          <LoginButton /> 
+          <><EmailAuth /><LoginButton /></> 
         )}
       </ThemedView>
       <ThemedView style={styles.stepContainer}>
