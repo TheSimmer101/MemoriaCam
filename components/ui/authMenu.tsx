@@ -8,7 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 WebBrowser.maybeCompleteAuthSession(); 
 
 //For the auth box, I decided to make the width 35% of the screen. Screen sizes can vary, so I didn't hardcode it.
-const boxWidth = Dimensions.get('window').width * 0.35;
+// const boxWidth = Dimensions.get('window').width * 0.35;
+const screenWidth = Dimensions.get('window').width;
+const boxWidth = Platform.OS === 'web' ? screenWidth * 0.35 : screenWidth * 0.9;
 
 export default function SlidingSquare({onSuccessfulLogin}) {
   const [activeTab, setActiveTab] = useState(0);
@@ -84,6 +86,7 @@ const styles = StyleSheet.create({
   mask: {
     // flex: 1,
     overflow: 'hidden',
+    minHeight: 400,
   },
   track: {
     flexDirection: 'row',
@@ -100,7 +103,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'gray',
-    width: 300,
+    width: '100%',
     marginBottom: 10,
   },
   passwordInput: {
@@ -145,10 +148,10 @@ export function EmailLogin({onSuccessfulLogin}) {
         borderColor: '#333', 
         padding: 20, 
         borderRadius: 15, 
-        width: 340,
+        width: '100%',
         backgroundColor: '#fff' 
       }}>
-        <TextInput style = {{ borderWidth: 1, width: 300, borderColor: 'gray', padding: 10, marginBottom: 10 }} value={email} onChangeText={setEmail} placeholder="Email" />
+        <TextInput style = {{ borderWidth: 1, borderColor: 'gray', padding: 10, marginBottom: 10 }} value={email} onChangeText={setEmail} placeholderTextColor="#999" placeholder="Email" />
         {/* <TextInput style = {{ borderWidth: 1, width: 300, borderColor: 'gray', padding: 10, marginBottom: 10 }} value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry /> */}
         <View style={styles.passwordContainer}>
           <TextInput 
@@ -156,6 +159,7 @@ export function EmailLogin({onSuccessfulLogin}) {
             value={password} 
             onChangeText={setPassword} 
             placeholder="Password" 
+            placeholderTextColor="#999"
             secureTextEntry={!isPasswordVisible} // 3. Toggle logic
           />
           <TouchableOpacity 
@@ -223,14 +227,15 @@ export function EmailSignUp({onSuccessfulLogin}) {
         width: 340,
         backgroundColor: '#fff' 
       }}>
-        <TextInput style = {{ borderWidth: 1, width: 300, borderColor: 'gray', padding: 10, marginBottom: 10 }} value={email} onChangeText={setEmail} placeholder="Email" />
-        <TextInput style = {{ borderWidth: 1, width: 300, borderColor: 'gray', padding: 10, marginBottom: 10 }} value={username} onChangeText={setUsername} placeholder="Username" />
-        <TextInput style = {{ borderWidth: 1, width: 300, borderColor: 'gray', padding: 10, marginBottom: 10 }} value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry />
+        <TextInput style = {{ borderWidth: 1, width: 300, borderColor: 'gray', padding: 10, marginBottom: 10 }} value={email} onChangeText={setEmail} placeholderTextColor="#999" placeholder="Email" />
+        <TextInput style = {{ borderWidth: 1, width: 300, borderColor: 'gray', padding: 10, marginBottom: 10 }} value={username} onChangeText={setUsername} placeholderTextColor="#999" placeholder="Username" />
+        <TextInput style = {{ borderWidth: 1, width: 300, borderColor: 'gray', padding: 10, marginBottom: 10 }} value={password} onChangeText={setPassword} placeholderTextColor="#999" placeholder="Password" secureTextEntry />
         <View style={styles.passwordContainer}>
           <TextInput 
             style={styles.passwordInput} 
             value={confirmPassword} 
             onChangeText={setConfirmPassword} 
+            placeholderTextColor="#999"
             placeholder="Confirm Password" 
             secureTextEntry={!isConfirmPasswordVisible} 
           />
@@ -324,9 +329,10 @@ export function EmailSignUp({onSuccessfulLogin}) {
       
 
     } else {
-      const redirectTo = Linking.createURL('/', { scheme: 'memoriacam' });
+      // const redirectTo = Linking.createURL('/', { scheme: 'memoriacam' });
+      const redirectTo = 'memoriacam://';
       console.log("Redirect URI:", redirectTo);
-
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
