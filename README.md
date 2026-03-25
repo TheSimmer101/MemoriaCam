@@ -8,6 +8,9 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
    ```bash
    npm install
+   npx expo install expo-auth-session expo-web-browser
+   npm install nativewind react-native-reanimated react-native-safe-area-context
+   npm install --dev tailwindcss@^3.4.17 prettier-plugin-tailwindcss@^0.5.11 babel-preset-expo
    ```
 
 2. Start the app
@@ -31,7 +34,6 @@ When you're ready, run:
 
 ```bash
 npm run reset-project
-npx expo install expo-auth-session expo-web-browser
 ```
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
