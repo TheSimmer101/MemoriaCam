@@ -117,6 +117,7 @@ export function EmailLogin({onSuccessfulLogin}) {
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [resetPasswordMode, setResetPasswordMode] = useState(false);
   
   const handleEmailLogin = async () => {
       const { data:loginData, error:loginError } = await supabase.auth.signInWithPassword({
@@ -125,11 +126,12 @@ export function EmailLogin({onSuccessfulLogin}) {
       });
       if (loginError && loginError.message.includes("Invalid login credentials")) {
         console.log("User not found, account doesn't exist with these credentials");
-        setAuthError("Invalid email or password");
+        setAuthError("Invalid email or password. If you signed up with Google, use the Google button below.");
       }
       else
         {
           console.log("User signed in:", loginData.user);
+          // console.log("Password is: ", password)
           onSuccessfulLogin(loginData.user);
           setAuthError(''); 
           return;
@@ -184,12 +186,12 @@ export function EmailSignUp({onSuccessfulLogin}) {
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [doPasswordsMatch, setDoPasswordsMatch] = useState(true);
-
+  const [authError, setAuthError] = useState('');
 
   const passwordsMatch = password === confirmPassword;
   const showMatchError = confirmPassword.length > 0 && !passwordsMatch;
   const showLengthError = passwordsMatch && password.length < 6; //passwords must be at least 6 characters.
-
+  
   const handleEmailSignUp = async () => {
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: email,
@@ -201,6 +203,10 @@ export function EmailSignUp({onSuccessfulLogin}) {
       }
   });
       if (signUpError) console.error(signUpError.message);
+      if (!signUpData.user?.identities?.length) {
+        setAuthError("This email is already registered. Try Google or Sign in with password");
+        return;
+      }
       else {
         console.log("User signed in:", signUpData.user);
         onSuccessfulLogin(signUpData.user); 
@@ -239,6 +245,13 @@ export function EmailSignUp({onSuccessfulLogin}) {
             />
           </TouchableOpacity>
         </View>
+
+         {authError && (
+          <Text style={{ color: 'red', fontSize: 12, marginBottom: 10, alignSelf: 'flex-start' }}>
+            {authError}
+          </Text>
+        )}
+
         {showMatchError && (
           <Text style={{ color: 'red', fontSize: 12, marginBottom: 10, alignSelf: 'flex-start' }}>
             Passwords don't match!
@@ -378,7 +391,7 @@ export function SignOutButton({onSuccessfulLogin}) {
     if (error) console.error("Error signing out:", error.message);
     else{
       console.log("User signed out successfully");
-      onSuccessfulLogin
+      onSuccessfulLogin(null); // Clear user state on sign out
     } 
   };
 
