@@ -7,15 +7,9 @@ export default function App() {
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
 
-
-  if (!permission) {
-    // Camera permissions are still loading.
-    return <View />;
-  }
-
+  if (!permission) return <View />;
 
   if (!permission.granted) {
-    // Camera permissions are not granted yet.
     return (
       <View style={styles.container}>
         <Text style={styles.message}>We need your permission to show the camera</Text>
@@ -24,53 +18,62 @@ export default function App() {
     );
   }
 
-
   function toggleCameraFacing() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   }
-
 
   return (
     <View style={styles.container}>
       <CameraView style={styles.camera} facing={facing} />
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
-          <Text style={styles.text}>Flip Camera</Text>
+          <Text style={styles.buttonText}>Flip Camera</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#111',
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    color: 'white',
+    fontSize: 24,
+    marginBottom: 20,
   },
   message: {
+    color: 'white',
     textAlign: 'center',
-    paddingBottom: 10,
+    paddingHorizontal: 20,
+    marginBottom: 10,
   },
   camera: {
     flex: 1,
+    width: '100%',
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   buttonContainer: {
     position: 'absolute',
     bottom: 64,
-    flexDirection: 'row',
-    backgroundColor: 'transparent',
     width: '100%',
-    paddingHorizontal: 64,
-  },
-  button: {
-    flex: 1,
     alignItems: 'center',
   },
-  text: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  button: {
+    backgroundColor: '#333',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  buttonText: {
     color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 

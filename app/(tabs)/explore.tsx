@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
-import { Button, Platform, StyleSheet, View } from 'react-native';
+import { Button, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ExternalLink } from '@/components/external-link';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
@@ -24,20 +24,38 @@ export default function TabTwoScreen() {
       }>
       
       <View style={{ margin: 16 }}>
-          <Link href="/Video/recordingPreview">
-            <View>
-              <Button title="Preview" onPress={()=> {}} />
-            </View>
+          <Link href="/Video/recordingPreview" asChild>
+            <Pressable
+            style={{
+              backgroundColor: "#007AFF",
+              padding: 14,
+              borderRadius: 8,
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "white", fontSize: 16 }}>
+              Camera Preview
+            </Text>
+          </Pressable>
           </Link>
         </View>
 
       <View style={{ margin: 16 }}>
-          <Link href="/Audio/audioPreview">
-            <View>
-              <Button title="Audio Preview" onPress={()=> {}} />
-            </View>
-          </Link>
-        </View>
+        <Link href="/Audio/audioPreview" asChild>
+          <Pressable
+            style={{
+              backgroundColor: "#007AFF",
+              padding: 14,
+              borderRadius: 8,
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "white", fontSize: 16 }}>
+              Audio Preview
+            </Text>
+          </Pressable>
+        </Link>
+      </View>
 
       <ThemedView style={styles.titleContainer}>
         <ThemedText
