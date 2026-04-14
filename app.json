@@ -24,7 +24,8 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
       "expo-router",
@@ -41,6 +42,7 @@
         }
       ],
       "@react-native-google-signin/google-signin",
+      "expo-web-browser",
       "expo-audio"
     ],
     "experiments": {

@@ -10,3 +10,4 @@
 # <br>Want to run the app locally?
 * Please see **setup.md** for details get it up and running
 * You will need to install a few dependencies and get your Supabase API key.
+>>>>>>> origin/main

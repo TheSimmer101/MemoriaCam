@@ -1,35 +1,66 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Tabs } from "expo-router";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Text } from "react-native";
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
+  return (
+    <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.4 }}>{icon}</Text>
+  );
+}
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function TabsLayout() {
+  const colorScheme = useColorScheme() ?? "light";
+  const isDark = colorScheme === "dark";
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarStyle: {
+          backgroundColor: isDark ? "#09090b" : "#ffffff",
+          borderTopColor: isDark ? "#27272a" : "#e4e4e7",
+          borderTopWidth: 1,
+          height: 64,
+          paddingBottom: 10,
+          paddingTop: 8,
+        },
+        tabBarActiveTintColor: isDark ? "#ffffff" : "#000000",
+        tabBarInactiveTintColor: isDark ? "#71717a" : "#a1a1aa",
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: "500",
+          marginTop: 2,
+        },
+      }}
+    >
       <Tabs.Screen
-        name="index"
+        name="dashboard"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: "Dashboard",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="⊞" focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="recordings"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: "My Recordings",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="🎥" focused={focused} />
+          ),
         }}
       />
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: "Calendar",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="📅" focused={focused} />
+          ),
+        }}
+      />
+
     </Tabs>
   );
 }
