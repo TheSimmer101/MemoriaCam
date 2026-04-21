@@ -1,3 +1,4 @@
+import { useEntries } from '@/hooks/useEntries';
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -20,6 +21,8 @@ const SUGGESTED_TAGS = [
 export default function NewRecordingScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const isDark = colorScheme === "dark";
+
+  const { createEntry, saveTags } = useEntries();
 
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
@@ -76,10 +79,11 @@ export default function NewRecordingScreen() {
   async function handleSave() {
     setError(null);
 
-    if (!recorded) {
-      setError("Please record a video before saving.");
-      return;
-    }
+    //Commented out for testing since video recording isnt wired up
+    // if (!recorded) {
+    //   setError("Please record a video before saving.");
+    //   return;
+    // }
     if (!title.trim()) {
       setError("Please add a title for your recording.");
       return;
@@ -87,8 +91,14 @@ export default function NewRecordingScreen() {
 
     setSaving(true);
     try {
-      // TODO: replace with your real save logic
-      await new Promise((res) => setTimeout(res, 1000));
+      const { data, error: saveError } = await createEntry(title.trim(), note.trim());
+      if (saveError) throw saveError;
+
+      // Save tags if any were selected
+      if (selectedTags.length > 0 && data) {
+        await saveTags(data.id, selectedTags);
+      }
+
       router.back();
     } catch (e) {
       setError("Something went wrong. Please try again.");
@@ -110,23 +120,16 @@ export default function NewRecordingScreen() {
             className="active:opacity-50"
             accessibilityRole="button"
             accessibilityLabel="Go back"
+            style={{ flex: 1 }}
           >
             <Text className={`text-sm ${textMuted}`}>← Back</Text>
           </Pressable>
-          <Text className={`text-base font-semibold ${textPrimary}`}>
+
+          <Text className={`text-base font-semibold ${textPrimary}`} style={{ flex: 1, textAlign: 'center' }}>
             New Recording
           </Text>
-          <Pressable
-            onPress={handleSave}
-            disabled={saving}
-            className={`active:opacity-50 ${saving ? "opacity-40" : ""}`}
-            accessibilityRole="button"
-            accessibilityLabel="Save recording"
-          >
-            <Text className={`text-sm font-semibold ${isDark ? "text-white" : "text-black"}`}>
-              {saving ? "Saving…" : "Save"}
-            </Text>
-          </Pressable>
+
+          <View style={{ flex: 1 }} />
         </View>
 
         <ScrollView
