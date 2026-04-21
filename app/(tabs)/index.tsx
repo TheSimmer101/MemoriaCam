@@ -28,7 +28,7 @@ export default function HomeScreen() {
       {Platform.OS === 'web' && (
         <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center', padding: 40 }}>
           <Text style={{ color: 'white', fontSize: 36, fontWeight: 'bold', marginBottom: 12 }}>MemoriaCam</Text>
-          <Text style={{ color: '#aaa', fontSize: 16, textAlign: 'center' }}>Record you memories, through video and text.</Text>
+          <Text style={{ color: '#aaa', fontSize: 16, textAlign: 'center' }}>Record your memories, through video and text.</Text>
         </View>
       )}
 
