@@ -250,12 +250,16 @@ export default function DashboardScreen() {
 
   const activeFilterCount = selectedTags.length + (selectedDateRange !== "all" ? 1 : 0);
   const [user, setUser] = useState<any>(null);
-  
+
   useEffect(() => {
     // 1. Check current user on load
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         console.log("Dashboard: User is", user.email);
+        console.log("Username is:" , user?.user_metadata?.full_name || 
+    user?.user_metadata?.display_name || 
+    user?.email?.split('@')[0] || 
+    'Guest')
         setUser(user);
       }
     });
@@ -329,7 +333,10 @@ export default function DashboardScreen() {
         </View>
 
         <View className="px-6 pt-6">
-          <Text className={`text-2xl font-bold tracking-tight ${textPrimary}`}>Welcome back, Sarah</Text>
+          <Text className={`text-2xl font-bold tracking-tight ${textPrimary}`}>Welcome back, {user?.user_metadata?.full_name || 
+    user?.user_metadata?.display_name || 
+    user?.email?.split('@')[0] || 
+    'Guest'}</Text>
           <Text className={`text-sm mt-0.5 mb-6 ${textMuted}`}>Your personal video diary awaits</Text>
 
           {/* Stat Cards */}
