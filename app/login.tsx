@@ -14,7 +14,7 @@ export default function LoginScreen() {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
         setUser(data.user);
-        router.replace('/(tabs)'); // Go to app if already logged in
+        router.replace('/(tabs)/dashboard'); // Go to app if already logged in
       }
     };
     checkUser();
@@ -52,7 +52,7 @@ export default function LoginScreen() {
             <Text style={styles.welcomeText}>Welcome to MemoriaCam</Text>
             <SlidingSquare onSuccessfulLogin={(userData) => {
               setUser(userData);
-              if (userData) router.replace('/(tabs)');
+              if (userData) router.replace('/(tabs)/dashboard');
             }} />
           </View>
         )}

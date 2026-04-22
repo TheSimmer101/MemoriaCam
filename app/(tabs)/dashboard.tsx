@@ -1,7 +1,8 @@
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SignOutButton } from "@/components/ui/authMenu";
+import { supabase } from '../../lib/supabase';
 import {
   ActivityIndicator,
   Dimensions,
@@ -248,6 +249,27 @@ export default function DashboardScreen() {
   const inputBg = isDark ? "bg-zinc-800 border-zinc-700" : "bg-zinc-100 border-zinc-200";
 
   const activeFilterCount = selectedTags.length + (selectedDateRange !== "all" ? 1 : 0);
+  const [user, setUser] = useState<any>(null);
+  
+  useEffect(() => {
+    // 1. Check current user on load
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        console.log("Dashboard: User is", user.email);
+        setUser(user);
+      }
+    });
+
+    // 2. Listen for sign out (to kick them back to login)
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Dashboard Auth Event:", event);
+      if (event === 'SIGNED_OUT') {
+        router.replace('/login');
+      }
+    });
+
+    return () => authListener.subscription.unsubscribe();
+  }, []);
 
   function toggleTag(tag: string) {
     setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
