@@ -1,6 +1,7 @@
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { router } from "expo-router";
 import { useState } from "react";
+import { SignOutButton } from "@/components/ui/authMenu";
 import {
   ActivityIndicator,
   Dimensions,
@@ -294,6 +295,7 @@ export default function DashboardScreen() {
         {/* Top bar */}
         <View className={`px-6 py-4 flex-row items-center justify-between border-b ${cardBorder}`}>
           <Text className={`text-base font-bold tracking-tight ${textPrimary}`}>MemoriaCam</Text>
+          <SignOutButton onSuccessfulLogin={() => router.replace('/login')} />
           <Pressable
             className="bg-black rounded-lg px-4 py-2 active:opacity-70"
             accessibilityRole="button"
