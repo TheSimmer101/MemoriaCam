@@ -1,8 +1,12 @@
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
+import { crossPlatformAlert } from '@/utils/crossPlatformAlert';
+import { useEntries } from '@/hooks/useEntries';
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-    Alert,
+    ActivityIndicator,
     Modal,
     Pressable,
     ScrollView,
@@ -15,25 +19,21 @@ import { SafeAreaView } from "react-native-safe-area-context";
 type Recording = {
   id: string;
   title: string;
-  date: string;
-  time: string;
-  duration: string;
-  tags: string[];
-  note: string;
+  created_at: string;
+  body_text: string | null;
+  video_path: string | null;
+  tags: { id: string; name: string }[];
 };
 
-const INITIAL_RECORDINGS: Recording[] = [
-  { id: "1", title: "Morning Reflection", date: "January 15, 2025", time: "8:30 AM", duration: "5:24", tags: ["gratitude", "morning"], note: "Felt really grounded today." },
-  { id: "2", title: "Weekend Goals", date: "January 14, 2025", time: "6:15 PM", duration: "8:12", tags: ["planning", "goals"], note: "Setting intentions for the week ahead." },
-  { id: "3", title: "Quick Thoughts", date: "January 13, 2025", time: "2:20 PM", duration: "3:45", tags: ["ideas"], note: "" },
-  { id: "4", title: "Work Reflection", date: "January 12, 2025", time: "5:45 PM", duration: "6:58", tags: ["work", "reflection"], note: "Good progress on the project." },
-  { id: "5", title: "Evening Gratitude", date: "January 11, 2025", time: "9:00 PM", duration: "4:33", tags: ["gratitude", "evening"], note: "Three things I'm grateful for today." },
-  { id: "6", title: "Personal Growth", date: "January 10, 2025", time: "7:30 AM", duration: "7:21", tags: ["growth", "well-care"], note: "Reflecting on habits I want to build." },
-  { id: "7", title: "Sunday Reset", date: "January 9, 2025", time: "10:00 AM", duration: "4:10", tags: ["self-care", "weekly"], note: "" },
-  { id: "8", title: "Creative Session", date: "January 8, 2025", time: "3:45 PM", duration: "9:02", tags: ["creativity"], note: "New ideas for side projects." },
-];
-
 const SUGGESTED_TAGS = ["morning", "evening", "gratitude", "reflection", "goals", "work", "personal", "health", "ideas", "weekly"];
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString();
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
 
 // ─── View Modal ───────────────────────────────────────────────────────────────
 function ViewModal({
@@ -81,12 +81,14 @@ function ViewModal({
             >
               <Text className={`text-xl ${isDark ? "text-black" : "text-white"}`}>▶</Text>
             </Pressable>
-            <Text className={`text-xs mt-3 ${textMuted}`}>{recording.duration}</Text>
+            {/* Duration will be added once video upload is wired up */}
           </View>
 
           {/* Title & date */}
           <Text className={`text-xl font-bold mb-1 ${textPrimary}`}>{recording.title}</Text>
-          <Text className={`text-sm mb-5 ${textMuted}`}>{recording.date} · {recording.time}</Text>
+          <Text className={`text-sm mb-5 ${textMuted}`}>
+            {formatDate(recording.created_at)} · {formatTime(recording.created_at)}
+          </Text>
 
           {/* Tags */}
           {recording.tags.length > 0 && (
@@ -94,8 +96,8 @@ function ViewModal({
               <Text className={`text-xs font-semibold uppercase tracking-wide mb-2 ${textMuted}`}>Tags</Text>
               <View className="flex-row flex-wrap gap-2">
                 {recording.tags.map((tag) => (
-                  <View key={tag} className={`rounded-full px-3 py-1 ${tagBg}`}>
-                    <Text className={`text-xs ${textMuted}`}>{tag}</Text>
+                  <View key={tag.id} className={`rounded-full px-3 py-1 ${tagBg}`}>
+                    <Text className={`text-xs ${textMuted}`}>{tag.name}</Text>
                   </View>
                 ))}
               </View>
@@ -105,8 +107,8 @@ function ViewModal({
           {/* Note */}
           <View className={`border-t pt-5 ${cardBorder}`}>
             <Text className={`text-xs font-semibold uppercase tracking-wide mb-3 ${textMuted}`}>Note</Text>
-            {recording.note ? (
-              <Text className={`text-sm leading-6 ${textPrimary}`}>{recording.note}</Text>
+            {recording.body_text ? (
+              <Text className={`text-sm leading-6 ${textPrimary}`}>{recording.body_text}</Text>
             ) : (
               <Text className={`text-sm italic ${textMuted}`}>No note added.</Text>
             )}
@@ -130,8 +132,8 @@ function EditModal({
   onClose: () => void;
 }) {
   const [title, setTitle] = useState(recording.title);
-  const [note, setNote] = useState(recording.note);
-  const [selectedTags, setSelectedTags] = useState<string[]>(recording.tags);
+  const [note, setNote] = useState(recording.body_text ?? '');
+  const [selectedTags, setSelectedTags] = useState<string[]>(recording.tags.map(t => t.name));
   const [tagInput, setTagInput] = useState("");
 
   const textPrimary = isDark ? "text-white" : "text-black";
@@ -157,7 +159,12 @@ function EditModal({
 
   function handleSave() {
     if (!title.trim()) return;
-    onSave({ ...recording, title: title.trim(), note, tags: selectedTags });
+    // Pass back with tags as objects so Recording type is satisfied
+    const updatedTags = selectedTags.map(name => {
+      const existing = recording.tags.find(t => t.name === name);
+      return existing ?? { id: name, name }; // use temp id for new tags
+    });
+    onSave({ ...recording, title: title.trim(), body_text: note, tags: updatedTags });
   }
 
   return (
@@ -181,7 +188,7 @@ function EditModal({
             style={{ height: 140 }}
           >
             <Text className="text-3xl opacity-30 mb-1">▶</Text>
-            <Text className={`text-xs ${textMuted}`}>{recording.duration} · {recording.date}</Text>
+            <Text className={`text-xs ${textMuted}`}>{formatDate(recording.created_at)}</Text>
           </View>
 
           {/* Title */}
@@ -273,10 +280,20 @@ export default function RecordingsScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const isDark = colorScheme === "dark";
 
-  const [recordings, setRecordings] = useState<Recording[]>(INITIAL_RECORDINGS);
+  
+  const { entries: recordings, loading, deleteEntry, updateEntry, refetch } = useEntries();
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [])
+  );
+  
   const [search, setSearch] = useState("");
   const [viewingRecording, setViewingRecording] = useState<Recording | null>(null);
   const [editingRecording, setEditingRecording] = useState<Recording | null>(null);
+
+  if (loading) return <ActivityIndicator style={{ flex: 1 }} />;
 
   const bg = isDark ? "bg-black" : "bg-white";
   const textPrimary = isDark ? "text-white" : "text-black";
@@ -286,33 +303,29 @@ export default function RecordingsScreen() {
   const tagBg = isDark ? "bg-zinc-700" : "bg-zinc-200";
   const inputBg = isDark ? "bg-zinc-800 border-zinc-700" : "bg-zinc-100 border-zinc-200";
 
-  const filtered = recordings.filter((r) =>
+  const filtered = recordings.filter((r: Recording) =>
     r.title.toLowerCase().includes(search.toLowerCase()) ||
-    r.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()))
+    r.tags.some((t) => t.name.toLowerCase().includes(search.toLowerCase()))
   );
 
   function handleDelete(id: string) {
-    Alert.alert(
-      "Delete Recording",
-      "Are you sure you want to delete this recording? This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            setRecordings((prev) => prev.filter((r) => r.id !== id));
-            setViewingRecording(null);
-          },
-        },
-      ]
+    crossPlatformAlert(
+      'Delete Recording',
+      'Are you sure you want to delete this recording? This cannot be undone.',
+      async () => {
+        await deleteEntry(id);
+        setViewingRecording(null);
+      }
     );
   }
 
-  function handleSaveEdit(updated: Recording) {
-    setRecordings((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+  async function handleSaveEdit(updated: Recording) {
+    await updateEntry(updated.id, {
+      title: updated.title,
+      body_text: updated.body_text ?? '',
+      tags: updated.tags.map((t) => t.name),
+    });
     setEditingRecording(null);
-    // Refresh the view modal with updated data if it was open
     setViewingRecording(updated);
   }
 
@@ -379,13 +392,12 @@ export default function RecordingsScreen() {
             </Text>
           </View>
         ) : (
-          filtered.map((item) => (
+          filtered.map((item: Recording) => (
             <View
               key={item.id}
               className={`rounded-2xl border mb-3 p-4 ${cardBg} ${cardBorder}`}
             >
               <View className="flex-row items-start justify-between">
-                {/* Tappable area: thumbnail + info → opens view modal */}
                 <Pressable
                   className="flex-row items-start flex-1 active:opacity-70"
                   onPress={() => setViewingRecording(item)}
@@ -398,9 +410,6 @@ export default function RecordingsScreen() {
                     style={{ width: 64, height: 64 }}
                   >
                     <Text className="text-xl opacity-40">▶</Text>
-                    <View className="absolute bottom-1 right-1 bg-black/70 rounded px-1">
-                      <Text className="text-white text-xs">{item.duration}</Text>
-                    </View>
                   </View>
 
                   {/* Info */}
@@ -409,26 +418,26 @@ export default function RecordingsScreen() {
                       {item.title}
                     </Text>
                     <Text className={`text-xs mb-2 ${textMuted}`}>
-                      {item.date} · {item.time}
+                      {formatDate(item.created_at)} · {formatTime(item.created_at)}
                     </Text>
                     {item.tags.length > 0 && (
                       <View className="flex-row flex-wrap gap-1">
                         {item.tags.map((tag) => (
-                          <View key={tag} className={`rounded px-1.5 py-0.5 ${tagBg}`}>
-                            <Text className={`text-xs ${textMuted}`}>{tag}</Text>
+                          <View key={tag.id} className={`rounded px-1.5 py-0.5 ${tagBg}`}>
+                            <Text className={`text-xs ${textMuted}`}>{tag.name}</Text>
                           </View>
                         ))}
                       </View>
                     )}
-                    {item.note ? (
+                    {item.body_text ? (
                       <Text className={`text-xs mt-2 ${textMuted}`} numberOfLines={1}>
-                        {item.note}
+                        {item.body_text}
                       </Text>
                     ) : null}
                   </View>
                 </Pressable>
 
-                {/* Actions — independent, no touch conflict */}
+                {/* Actions */}
                 <View className="ml-2 gap-2">
                   <Pressable
                     onPress={() => openEdit(item)}
