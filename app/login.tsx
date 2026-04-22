@@ -133,6 +133,14 @@ export default function LoginScreen() {
             </Text>
           </Pressable>
 
+          {/* Dev shortcut */}
+          <Pressable
+            className="mt-4 py-2"
+            onPress={() => router.push("/dashboard")}
+          >
+            <Text className="underline">Skip to Dashboard (dev)</Text>
+          </Pressable>
+
           {/* Sign up link */}
           <View className="flex-row justify-center mt-6">
             <Text
