@@ -25,7 +25,7 @@ export default function NewRecordingScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const isDark = colorScheme === "dark";
 
-  const { createEntry, saveTags } = useEntries();
+  const { createEntry, saveTags, saveVideo } = useEntries();
 
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
@@ -54,6 +54,7 @@ export default function NewRecordingScreen() {
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const [showFullVideo, setShowFullVideo] = useState(false);
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
 
   function toggleTag(tag: string) {
     setSelectedTags((prev) =>
@@ -103,6 +104,8 @@ export default function NewRecordingScreen() {
         const blob = new Blob(chunksRef.current, {
           type: "video/webm",
         });
+
+        setVideoBlob(blob);
 
         const url = URL.createObjectURL(blob);
 
@@ -193,12 +196,12 @@ export default function NewRecordingScreen() {
 
   async function handleSave() {
     setError(null);
-
+    
     //Commented out for testing since video recording isnt wired up
-    // if (!recorded) {
-    //   setError("Please record a video before saving.");
-    //   return;
-    // }
+     if (!videoBlob && !videoUri) {
+       setError("Please record a video before saving.");
+       return;
+     }
     if (!title.trim()) {
       setError("Please add a title for your recording.");
       return;
@@ -206,7 +209,14 @@ export default function NewRecordingScreen() {
 
     setSaving(true);
     try {
-      const { data, error: saveError } = await createEntry(title.trim(), note.trim());
+      const file: Blob | { uri: string; type?: string; name?: string } =
+        Platform.OS === "web"
+          ? (videoBlob as Blob)
+          : { uri: videoUri!, type: "video/mp4" };
+
+      const videoUrl = await saveVideo(file);
+
+      const { data, error: saveError } = await createEntry(title.trim(), note.trim(), videoUrl);
       if (saveError) throw saveError;
 
       // Save tags if any were selected
@@ -216,7 +226,9 @@ export default function NewRecordingScreen() {
 
       router.back();
     } catch (e) {
+      console.log("SAVE ERROR:", e);
       setError("Something went wrong. Please try again.");
+      setError(String(e));
     } finally {
       setSaving(false);
     }
