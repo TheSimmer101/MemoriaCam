@@ -405,12 +405,6 @@ export default function RecordingsScreen() {
                   accessibilityLabel={`View recording: ${item.title}`}
                 >
                   {/* Thumbnail */}
-                  <View
-                    className={`rounded-xl items-center justify-center mr-3 ${isDark ? "bg-zinc-800" : "bg-zinc-200"}`}
-                    style={{ width: 64, height: 64 }}
-                  >
-                    <Text className="text-xl opacity-40">▶</Text>
-                  </View>
 
                   {/* Info */}
                   <View className="flex-1">

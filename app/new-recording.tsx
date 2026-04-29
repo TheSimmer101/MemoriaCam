@@ -15,6 +15,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import {Video, ResizeMode} from "expo-av"
+import * as VideoThumbnails from 'expo-video-thumbnails';
+import {Image} from "expo-image"
 
 const SUGGESTED_TAGS = [
   "morning", "evening", "gratitude", "reflection",
@@ -55,6 +57,36 @@ export default function NewRecordingScreen() {
   const chunksRef = useRef<Blob[]>([]);
   const [showFullVideo, setShowFullVideo] = useState(false);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
+  const [thumbnailUri, setThumbnailUri] = useState<string | null>(null);
+  const [showThumbnail, setShowThumbnail] = useState(false);
+
+  useEffect(() => {
+  if (!videoUri) return;
+
+  let cancelled = false;
+
+  async function run() {
+    try {
+      if (!videoUri) return;
+
+      const uri = videoUri;
+
+      const thumb = await generateThumbnail(uri);
+
+      if (!cancelled) {
+        console.log("THUMB GENERATED:", thumb);
+        setThumbnailUri(thumb);
+      }
+    } catch (e) {
+      console.log("Thumbnail effect error:", e);
+    }
+  }
+  run();
+
+  return () => {
+    cancelled = true;
+  };
+}, [videoUri]);
 
   function toggleTag(tag: string) {
     setSelectedTags((prev) =>
@@ -165,9 +197,8 @@ export default function NewRecordingScreen() {
         maxDuration: 60,
       });
 
-      // Log of Video
       console.log("VIDEO RESULT:", video);
-      // prevent stale state updates after stop
+    
       if (!recordingRef.current) return;
 
       if (video?.uri) {
@@ -194,10 +225,43 @@ export default function NewRecordingScreen() {
     setIsRecording(false);
   }
 
+  async function generateThumbnail(videoUri: string) {
+    if (Platform.OS === "web") {
+      return new Promise<string | null>((resolve) => {
+        const video = document.createElement("video");
+        video.src = videoUri;
+        video.currentTime = 1;
+
+        video.onloadeddata = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(video, 0, 0);
+
+          resolve(canvas.toDataURL("image/jpeg"));
+        };
+
+        video.onerror = () => resolve(null);
+      });
+    }
+
+    try {
+      const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
+        time: 1000,
+      });
+
+      return uri;
+    } catch (e) {
+      console.log("Thumbnail error:", e);
+      return null;
+    }
+  }
+
   async function handleSave() {
     setError(null);
-    
-    //Commented out for testing since video recording isnt wired up
+        
      if (!videoBlob && !videoUri) {
        setError("Please record a video before saving.");
        return;
@@ -233,6 +297,13 @@ export default function NewRecordingScreen() {
       setSaving(false);
     }
   }
+
+  console.log("STATE:", {
+    videoUri,
+    thumbnailUri,
+    recorded,
+    isRecording,
+  });
 
   return (
     <SafeAreaView className={`flex-1 ${bg}`} edges={["top"]}>
@@ -306,9 +377,22 @@ export default function NewRecordingScreen() {
                   </Text>
                 </Pressable>
 
+                {thumbnailUri && (
+                  <Pressable
+                    className="mt-2 px-3 py-1 rounded-md bg-black"
+                    onPress={() => {
+                      setShowThumbnail(true);
+                    }}
+                  >
+                    <Text className="text-white text-xs">
+                      Preview Thumbnail
+                    </Text>
+                  </Pressable>
+                )}
+
                 <Pressable
                   className="mt-3 active:opacity-60"
-                  onPress={() => { setVideoUri(null); setIsRecording(false); }}
+                  onPress={() => { setVideoUri(null); setIsRecording(false); setThumbnailUri(null)}}
                   accessibilityRole="button"
                   accessibilityLabel="Re-record video"
                 >
@@ -520,6 +604,31 @@ export default function NewRecordingScreen() {
             <Text style={{ color: "white", fontSize: 18 }}>✕</Text>
           </Pressable>
 
+        </View>
+      </Modal>
+      <Modal visible={showThumbnail} transparent animationType="fade">
+        <View style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.95)",
+          justifyContent: "center",
+          alignItems: "center",
+        }}>
+          <Image
+            source={{ uri: thumbnailUri! }}
+            style={{
+              width: "90%",
+              height: 450,
+              borderRadius: 12,
+            }}
+            contentFit="contain"
+          />
+
+          <Pressable
+            onPress={() => setShowThumbnail(false)}
+            style={{ marginTop: 20 }}
+          >
+            <Text style={{ color: "white" }}>Close</Text>
+          </Pressable>
         </View>
       </Modal>
     </SafeAreaView>
