@@ -314,7 +314,7 @@ export default function NewRecordingScreen() {
         {/* Header */}
         <View className={`px-6 py-4 flex-row items-center justify-between border-b ${cardBorder}`}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => router.replace("/dashboard")} 
             className="active:opacity-50"
             accessibilityRole="button"
             accessibilityLabel="Go back"
