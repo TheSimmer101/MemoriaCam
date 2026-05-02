@@ -169,7 +169,7 @@ export default function NewRecordingScreen() {
     if (Platform.OS === "web") {
       return webRecording();
     }
-    
+   
     try {
       if (!permission?.granted) {
         const result = await requestPermission();
@@ -198,12 +198,14 @@ export default function NewRecordingScreen() {
       });
 
       console.log("VIDEO RESULT:", video);
-    
-      if (!recordingRef.current) return;
 
-      if (video?.uri) {
-        setVideoUri(video.uri);
+      if (!video?.uri) {
+        setError("Recording failed - no video returned");
+        setIsRecording(false);
+        return;
       }
+
+      setVideoUri(video.uri);
     } catch (e) {
       console.log(e);
       setError("Recording failed");
@@ -220,7 +222,7 @@ export default function NewRecordingScreen() {
       stopWebRecording();
       return;
     }
-  
+ 
     cameraRef.current?.stopRecording();
     setIsRecording(false);
   }
@@ -261,7 +263,7 @@ export default function NewRecordingScreen() {
 
   async function handleSave() {
     setError(null);
-        
+       
      if (!videoBlob && !videoUri) {
        setError("Please record a video before saving.");
        return;
@@ -314,7 +316,7 @@ export default function NewRecordingScreen() {
         {/* Header */}
         <View className={`px-6 py-4 flex-row items-center justify-between border-b ${cardBorder}`}>
           <Pressable
-            onPress={() => router.replace("/dashboard")} 
+            onPress={() => router.replace("/dashboard")}
             className="active:opacity-50"
             accessibilityRole="button"
             accessibilityLabel="Go back"
@@ -346,20 +348,19 @@ export default function NewRecordingScreen() {
           {/* Camera / Recording area */}
           <View
             className={`w-full rounded-2xl items-center justify-center mb-6 border ${cardBg} ${cardBorder}`}
-            style={{ height: 220 }}         
+            style={{ height: 220 }}        
           >
-            {permission?.granted && isRecording && !videoUri && (
-              <CameraView
-                ref={cameraRef}
-                style={{
-                  position: "absolute",
-                  width: 1,
-                  height: 1,
-                  opacity: 0,
-                }}
-                mode="video"
-              />
-            )}
+            <CameraView
+              ref={cameraRef}
+              style={{
+                position: "absolute",
+                width: 1,
+                height: 1,
+                opacity: 0,
+              }}
+              mode="video"
+              facing='front'
+            />
 
             {recorded ? (
               <View className="items-center">
@@ -439,7 +440,6 @@ export default function NewRecordingScreen() {
                     Tap to open audio
                   </Text>
                 </Pressable>
-
 
               </View>
             )}

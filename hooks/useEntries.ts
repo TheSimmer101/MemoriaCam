@@ -34,34 +34,34 @@ export function useEntries() {
   async function saveVideo(
     file: Blob | { uri: string; type?: string; name?: string }
   ) {
-    const isWeb = file instanceof Blob;
-    const ext = "mp4";
-    const fileName = `${Date.now()}.${ext}`;
+    const fileName = `${Date.now()}.mp4`;
 
-    let uploadData: any;
+    let uploadBody: Blob | FormData;
     let contentType = "video/mp4";
 
     // WEB
     if (file instanceof Blob) {
-      uploadData = new File([file], fileName, {
-        type: "video/mp4",
-      });
-
-      contentType = "video/mp4";
+      uploadBody = file;
     }
 
-    // NATIVE (Expo)
+    // ANDROID / iOS
     else {
-      const response = await fetch(file.uri);
-      const blob = await response.blob();
+      const formData = new FormData();
 
-      uploadData = blob;
-      contentType = file.type || "video/mp4";
+
+      formData.append("file", {
+        uri: file.uri,
+        name: fileName,
+        type: file.type || "video/mp4",
+      } as any);
+
+
+      uploadBody = formData;
     }
 
     const { data, error } = await supabase.storage
       .from("Videos")
-      .upload(fileName, uploadData, {
+      .upload(fileName, uploadBody, {
         contentType,
         upsert: false,
       });
@@ -70,12 +70,7 @@ export function useEntries() {
       console.log("UPLOAD ERROR:", error);
       throw error;
     }
-
-    const { data: publicUrlData } = supabase.storage
-      .from("Videos")
-      .getPublicUrl(data.path);
-
-    return publicUrlData.publicUrl;
+    return data.path;
   }
 
   async function createEntry(title: string, body_text?: string, video_url?: string) {
