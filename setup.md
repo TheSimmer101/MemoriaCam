@@ -19,6 +19,8 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo install expo-camera
    npx expo install expo-audio
    npx expo install expo-av
+   npx expo install expo-video-thumbnails
+   npx expo install expo-video
    ```
 
 2. Get the Supabase key 
