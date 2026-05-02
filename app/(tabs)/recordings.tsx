@@ -1,4 +1,3 @@
-
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { crossPlatformAlert } from '@/utils/crossPlatformAlert';
@@ -293,7 +292,6 @@ export async function getVideoUrl(path: string) {
   return data.signedUrl;
 }
 
-
 async function generateWebThumbnail(videoUri: string): Promise<string | null> {
   return new Promise((resolve) => {
     const video = document.createElement("video");
@@ -328,29 +326,13 @@ async function generateWebThumbnail(videoUri: string): Promise<string | null> {
   });
 }
 
-async function generateThumbnail(videoUri: string) {
-  if (Platform.OS === "web") {
-    return generateWebThumbnail(videoUri);
-  }
-
-  try {
-    const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
-      time: 1000,
-    });
-
-    return uri;
-  } catch (e) {
-    console.log("Thumbnail error:", e);
-    return null;
-  }
-}
-
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function RecordingsScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const isDark = colorScheme === "dark";
   const [thumbnails, setThumbnails] = useState<Record<string, string | null>>({});
- 
+
+  
   const { entries: recordings, loading, deleteEntry, updateEntry, refetch } = useEntries();
 
   useFocusEffect(
@@ -403,12 +385,11 @@ export default function RecordingsScreen() {
 
     if (recordings.length > 0) run();
 
-
     return () => {
       cancelled = true;
     };
   }, [recordings]);
- 
+  
   const [search, setSearch] = useState("");
   const [viewingRecording, setViewingRecording] = useState<Recording | null>(null);
   const [editingRecording, setEditingRecording] = useState<Recording | null>(null);

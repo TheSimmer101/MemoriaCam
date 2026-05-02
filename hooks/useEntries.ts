@@ -34,17 +34,23 @@ export function useEntries() {
   async function saveVideo(
     file: Blob | { uri: string; type?: string; name?: string }
   ) {
-    const fileName = `${Date.now()}.mp4`;
+    const isWeb = file instanceof Blob;
+    const ext = "mp4";
+    const fileName = `${Date.now()}.${ext}`;
 
-    let uploadBody: Blob | FormData;
+    let uploadData: Blob | FormData;
     let contentType = "video/mp4";
 
     // WEB
     if (file instanceof Blob) {
-      uploadBody = file;
+      uploadData = new File([file], fileName, {
+        type: "video/mp4",
+      });
+
+      contentType = "video/mp4";
     }
 
-    // ANDROID / iOS
+    // NATIVE (Expo)
     else {
       const formData = new FormData();
 
@@ -55,13 +61,12 @@ export function useEntries() {
         type: file.type || "video/mp4",
       } as any);
 
-
-      uploadBody = formData;
+      uploadData = formData;
     }
 
     const { data, error } = await supabase.storage
       .from("Videos")
-      .upload(fileName, uploadBody, {
+      .upload(fileName, uploadData, {
         contentType,
         upsert: false,
       });
@@ -70,6 +75,11 @@ export function useEntries() {
       console.log("UPLOAD ERROR:", error);
       throw error;
     }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("Videos")
+      .getPublicUrl(data.path);
+
     return data.path;
   }
 
