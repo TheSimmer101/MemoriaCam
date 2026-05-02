@@ -1,10 +1,11 @@
+
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { crossPlatformAlert } from '@/utils/crossPlatformAlert';
 import { useEntries } from '@/hooks/useEntries';
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     ActivityIndicator,
     Modal,
@@ -13,8 +14,12 @@ import {
     Text,
     TextInput,
     View,
+    Platform
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as VideoThumbnails from 'expo-video-thumbnails';
+import {Image} from "expo-image"
+import { supabase } from "@/lib/supabase";
 
 type Recording = {
   id: string;
@@ -274,13 +279,78 @@ function EditModal({
     </Modal>
   );
 }
+export async function getVideoUrl(path: string) {
+  const { data, error } = await supabase
+    .storage
+    .from("Videos")
+    .createSignedUrl(path, 60 * 60);
+
+  if (error) {
+    console.log("Signed URL error:", error);
+    return null;
+  }
+
+  return data.signedUrl;
+}
+
+
+async function generateWebThumbnail(videoUri: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+
+    video.src = videoUri;
+    video.crossOrigin = "anonymous";
+    video.muted = true;
+    video.playsInline = true;
+
+    video.onloadeddata = () => {
+      video.currentTime = 1;
+    };
+
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(null);
+
+        ctx.drawImage(video, 0, 0);
+
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      } catch {
+        resolve(null);
+      }
+    };
+
+    video.onerror = () => resolve(null);
+  });
+}
+
+async function generateThumbnail(videoUri: string) {
+  if (Platform.OS === "web") {
+    return generateWebThumbnail(videoUri);
+  }
+
+  try {
+    const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
+      time: 1000,
+    });
+
+    return uri;
+  } catch (e) {
+    console.log("Thumbnail error:", e);
+    return null;
+  }
+}
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function RecordingsScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const isDark = colorScheme === "dark";
-
-  
+  const [thumbnails, setThumbnails] = useState<Record<string, string | null>>({});
+ 
   const { entries: recordings, loading, deleteEntry, updateEntry, refetch } = useEntries();
 
   useFocusEffect(
@@ -288,7 +358,57 @@ export default function RecordingsScreen() {
       refetch();
     }, [])
   );
-  
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function run() {
+      const results: Record<string, string | null> = {};
+
+      for (const item of recordings) {
+        if (!item.video_path) continue;
+        if (thumbnails[item.id]) continue;
+
+        let videoUrl = item.video_path;
+
+        if (videoUrl) {
+          const { data, error } = await supabase.storage
+            .from("Videos")
+            .createSignedUrl(videoUrl, 60 * 60);
+
+          if (!error) {
+            videoUrl = data.signedUrl;
+          } else {
+            console.log("Signed URL error:", error);
+            continue;
+          }
+        }
+
+        const thumb =
+          Platform.OS === "web"
+            ? await generateWebThumbnail(videoUrl)
+            : await VideoThumbnails.getThumbnailAsync(videoUrl, {
+                time: 1000,
+              }).then(r => r.uri).catch(() => null);
+
+        if (!cancelled) {
+          results[item.id] = thumb;
+        }
+      }
+
+      if (!cancelled) {
+        setThumbnails(prev => ({ ...prev, ...results }));
+      }
+    }
+
+    if (recordings.length > 0) run();
+
+
+    return () => {
+      cancelled = true;
+    };
+  }, [recordings]);
+ 
   const [search, setSearch] = useState("");
   const [viewingRecording, setViewingRecording] = useState<Recording | null>(null);
   const [editingRecording, setEditingRecording] = useState<Recording | null>(null);
@@ -405,6 +525,22 @@ export default function RecordingsScreen() {
                   accessibilityLabel={`View recording: ${item.title}`}
                 >
                   {/* Thumbnail */}
+                  <View style={{ width: 60, height: 60, borderRadius: 10, overflow: "hidden", marginRight: 12 }}>
+                    {thumbnails[item.id] ? (
+                      <Image
+                        source={{ uri: thumbnails[item.id]! }}
+                        style={{ width: "100%", height: "100%" }}
+                        contentFit="cover"
+                      />
+                    ) : (
+                        <View
+                          className={`rounded-xl items-center justify-center mr-3 ${isDark ? "bg-zinc-800" : "bg-zinc-200"}`}
+                          style={{ width: 64, height: 64 }}
+                        >
+                          <Text className="text-xl opacity-40">▶</Text>
+                        </View>
+                    )}
+                  </View>
 
                   {/* Info */}
                   <View className="flex-1">
