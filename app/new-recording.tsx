@@ -1,7 +1,7 @@
 import { useEntries } from '@/hooks/useEntries';
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     KeyboardAvoidingView,
     Platform,
@@ -10,8 +10,11 @@ import {
     Text,
     TextInput,
     View,
+    Modal
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import {Video, ResizeMode} from "expo-av"
 
 const SUGGESTED_TAGS = [
   "morning", "evening", "gratitude", "reflection",
@@ -29,7 +32,6 @@ export default function NewRecordingScreen() {
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isRecording, setIsRecording] = useState(false);
-  const [recorded, setRecorded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +45,15 @@ export default function NewRecordingScreen() {
       ? "bg-zinc-800 text-white border-zinc-700"
       : "bg-zinc-100 text-black border-zinc-200"
   }`;
+
+  const cameraRef = useRef<any>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [videoUri, setVideoUri] = useState<string | null>(null);
+  const recorded = !!videoUri
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const [showFullVideo, setShowFullVideo] = useState(false);
 
   function toggleTag(tag: string) {
     setSelectedTags((prev) =>
@@ -62,18 +73,122 @@ export default function NewRecordingScreen() {
     setSelectedTags((prev) => prev.filter((t) => t !== tag));
   }
 
-  function handleStartRecording() {
-    // TODO: integrate with expo-camera / expo-av
-    setIsRecording(true);
-    setTimeout(() => {
+
+  const recordingRef = useRef(false);
+
+  async function webRecording() {
+    if (isRecording) return;
+    try {
+      setError(null);
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      streamRef.current = stream;
+
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, {
+          type: "video/webm",
+        });
+
+        const url = URL.createObjectURL(blob);
+
+        setVideoUri(url);
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      recordingRef.current = true;
+    } catch (e) {
+      console.log(e);
+      setError("Web recording failed (camera permission?)");
+    }
+  }
+
+  function stopWebRecording() {
+  if (!mediaRecorderRef.current) return;
+
+  setIsRecording(false);
+
+  mediaRecorderRef.current.stop();
+
+  streamRef.current?.getTracks().forEach((track) => track.stop());
+}
+
+  async function handleStartRecording() {
+    setError(null);
+
+    if (Platform.OS === "web") {
+      return webRecording();
+    }
+    
+    try {
+      if (!permission?.granted) {
+        const result = await requestPermission();
+        if (!result.granted) return;
+      }
+
+      setIsRecording(true);
+      recordingRef.current = true;
+
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          if (cameraRef.current) return resolve();
+          setTimeout(check, 50);
+        };
+        check();
+      });
+
+      if (!cameraRef.current) {
+        setError("Camera not ready");
+        setIsRecording(false);
+        return;
+      }
+
+      const video = await cameraRef.current.recordAsync({
+        maxDuration: 60,
+      });
+
+      // Log of Video
+      console.log("VIDEO RESULT:", video);
+      // prevent stale state updates after stop
+      if (!recordingRef.current) return;
+
+      if (video?.uri) {
+        setVideoUri(video.uri);
+      }
+    } catch (e) {
+      console.log(e);
+      setError("Recording failed");
+    } finally {
       setIsRecording(false);
-      setRecorded(true);
-    }, 3000);
+      recordingRef.current = false;
+    }
   }
 
   function handleStopRecording() {
+    recordingRef.current = false;
+
+    if (Platform.OS === "web") {
+      stopWebRecording();
+      return;
+    }
+  
+    cameraRef.current?.stopRecording();
     setIsRecording(false);
-    setRecorded(true);
   }
 
   async function handleSave() {
@@ -116,7 +231,7 @@ export default function NewRecordingScreen() {
         {/* Header */}
         <View className={`px-6 py-4 flex-row items-center justify-between border-b ${cardBorder}`}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => router.replace("/dashboard")} 
             className="active:opacity-50"
             accessibilityRole="button"
             accessibilityLabel="Go back"
@@ -148,17 +263,40 @@ export default function NewRecordingScreen() {
           {/* Camera / Recording area */}
           <View
             className={`w-full rounded-2xl items-center justify-center mb-6 border ${cardBg} ${cardBorder}`}
-            style={{ height: 220 }}
+            style={{ height: 220 }}         
           >
+            {permission?.granted && isRecording && !videoUri && (
+              <CameraView
+                ref={cameraRef}
+                style={{
+                  position: "absolute",
+                  width: 1,
+                  height: 1,
+                  opacity: 0,
+                }}
+                mode="video"
+              />
+            )}
+
             {recorded ? (
               <View className="items-center">
                 <Text className="text-4xl mb-2">✅</Text>
                 <Text className={`text-sm font-medium ${textPrimary}`}>
                   Video recorded
                 </Text>
+
+                <Pressable
+                  className="mt-3 px-4 py-2 rounded-lg bg-black"
+                  onPress={() => setShowFullVideo(true)}
+                >
+                  <Text className="text-white text-xs">
+                    View Playback
+                  </Text>
+                </Pressable>
+
                 <Pressable
                   className="mt-3 active:opacity-60"
-                  onPress={() => { setRecorded(false); setIsRecording(false); }}
+                  onPress={() => { setVideoUri(null); setIsRecording(false); }}
                   accessibilityRole="button"
                   accessibilityLabel="Re-record video"
                 >
@@ -193,9 +331,20 @@ export default function NewRecordingScreen() {
                     Start Recording
                   </Text>
                 </Pressable>
-                <Text className={`text-xs mt-3 ${textMuted}`}>
-                  Tap to open your camera
-                </Text>
+
+                <Pressable onPress={() => router.push("/Video/recordingPreview")}>
+                  <Text className={`text-xs mt-3 ${textMuted}`}>
+                    Tap to open your camera
+                  </Text>
+                </Pressable>
+
+                <Pressable onPress={() => router.push("/Audio/audioPreview")}>
+                  <Text className={`text-xs mt-3 ${textMuted}`}>
+                    Tap to open audio
+                  </Text>
+                </Pressable>
+
+
               </View>
             )}
           </View>
@@ -306,6 +455,61 @@ export default function NewRecordingScreen() {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+      <Modal visible={showFullVideo} animationType="fade">
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "black",
+            width: "100%",
+            height: "100%",
+          }}
+        >
+
+          <View
+            style={{
+              flex: 1,
+              width: "100%",
+              height: "100%",
+            }}
+          >
+            {Platform.OS === "web" ? (
+              <video
+                src={videoUri!}
+                controls
+                autoPlay
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  backgroundColor: "black",
+                }}
+              />
+            ) : (
+              <Video
+                source={{ uri: videoUri! }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode={ResizeMode.CONTAIN}
+                useNativeControls
+                shouldPlay
+              />
+            )}
+          </View>
+
+          <Pressable
+            onPress={() => setShowFullVideo(false)}
+            style={{
+              position: "absolute",
+              top: 50,
+              right: 20,
+              zIndex: 999,
+              padding: 10,
+            }}
+          >
+            <Text style={{ color: "white", fontSize: 18 }}>✕</Text>
+          </Pressable>
+
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
