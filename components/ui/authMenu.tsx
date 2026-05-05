@@ -323,10 +323,9 @@ export function EmailSignUp({onSuccessfulLogin}) {
       // Web: simple redirect
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin },
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
       });
       if (error) console.error("Login error:", error.message);
-      
 
     } else {
       // const redirectTo = Linking.createURL('/', { scheme: 'memoriacam' });
@@ -358,6 +357,9 @@ export function EmailSignUp({onSuccessfulLogin}) {
               access_token: accessToken,
               refresh_token: refreshToken,
             });
+
+            await supabase.auth.getSession();
+
             const { data: userData, error: userError } = await supabase.auth.getUser();
             if (userError) {
               console.error("Error fetching user after OAuth login:", userError.message);
@@ -366,7 +368,8 @@ export function EmailSignUp({onSuccessfulLogin}) {
               onSuccessfulLogin(userData.user);
               return;
             }
-          } else {
+          } 
+          else {
             console.error("Missing tokens in redirect URL:", url);
           }
         }
