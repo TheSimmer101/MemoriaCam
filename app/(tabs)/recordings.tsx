@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { crossPlatformAlert } from '@/utils/crossPlatformAlert';
 import { useEntries } from '@/hooks/useEntries';
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { compressVideo } from '@/utils/compress-video';
 import { router } from "expo-router";
 import { useState, useEffect } from "react";
 import {

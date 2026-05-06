@@ -35,34 +35,51 @@ export function useEntries() {
     file: Blob | { uri: string; type?: string; name?: string }
   ) {
     const isWeb = file instanceof Blob;
-    const ext = "mp4";
-    const fileName = `${Date.now()}.${ext}`;
-
     let uploadData: Blob | FormData;
     let contentType = "video/mp4";
+    let fileName = `${Date.now()}.mp4`;
 
     // WEB
     if (file instanceof Blob) {
-      uploadData = new File([file], fileName, {
-        type: "video/mp4",
-      });
-
-      contentType = "video/mp4";
+      const isWebm = file.type.includes("webm");
+      const ext = isWebm ? "webm" : "mp4";
+      contentType = file.type || "video/webm";
+      fileName = `${Date.now()}.${ext}`;
+      uploadData = new File([file], fileName, { type: contentType });
     }
 
     // NATIVE (Expo)
     else {
-      const formData = new FormData();
+      const { Video } = await import("react-native-compressor");
 
+      //print original file size
+      const beforeResponse = await fetch(file.uri);
+      const beforeBlob = await beforeResponse.blob();
+      console.log("Before compression:", (beforeBlob.size / 1024 / 1024).toFixed(2), "MB");
 
-      formData.append("file", {
-        uri: file.uri,
-        name: fileName,
-        type: file.type || "video/mp4",
-      } as any);
+      const compressedUri = await Video.compress(file.uri, {
+      compressionMethod: "auto",
+      quality: 0.6,
+    }).catch(() => file.uri); //if compression fails fall back to the original video
 
-      uploadData = formData;
-    }
+    //print file size after compressing
+    const afterResponse = await fetch(compressedUri);
+    const afterBlob = await afterResponse.blob();
+    console.log("After compression:", (afterBlob.size / 1024 / 1024).toFixed(2), "MB");
+
+    const ext = file.type?.includes("webm") ? "webm" : "mp4";
+    fileName = `${Date.now()}.${ext}`;
+    contentType = file.type || "video/mp4";
+
+    const formData = new FormData();
+    formData.append("file", {
+      uri: compressedUri,
+      name: fileName,
+      type: contentType,
+    } as any);
+    uploadData = formData;
+  }
+      
 
     const { data, error } = await supabase.storage
       .from("Videos")
@@ -74,6 +91,9 @@ export function useEntries() {
     if (error) {
       console.log("UPLOAD ERROR:", error);
       throw error;
+    }
+    else{
+      console.log("VIDEO UPLOADED SUCCESSFULLY");
     }
 
     const { data: publicUrlData } = supabase.storage
