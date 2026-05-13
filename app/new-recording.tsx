@@ -13,7 +13,7 @@ import {
     Modal
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import {Video, ResizeMode} from "expo-av"
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import {Image} from "expo-image"
@@ -50,6 +50,7 @@ export default function NewRecordingScreen() {
 
   const cameraRef = useRef<any>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const recorded = !!videoUri
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -149,7 +150,7 @@ export default function NewRecordingScreen() {
       recordingRef.current = true;
     } catch (e) {
       console.log(e);
-      setError("Web recording failed (camera permission?)");
+      setError("Web recording failed");
     }
   }
 
@@ -171,9 +172,17 @@ export default function NewRecordingScreen() {
     }
     
     try {
-      if (!permission?.granted) {
-        const result = await requestPermission();
-        if (!result.granted) return;
+      const cam = await requestPermission();
+      const mic = await requestMicPermission();
+
+      if(!cam.granted){
+        setError("Camera permission denied. Please enable permission");
+        return;
+      }
+
+      if(!mic.granted){
+        setError("Microphone permission denied. Please enable permission");
+        return;
       }
 
       setIsRecording(true);

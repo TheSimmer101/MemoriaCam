@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import {Image} from "expo-image"
+import { VideoView, useVideoPlayer} from 'expo-video'
 import { supabase } from "@/lib/supabase";
 
 type Recording = {
@@ -56,6 +57,36 @@ function ViewModal({
   const textMuted = isDark ? "text-zinc-400" : "text-zinc-500";
   const cardBorder = isDark ? "border-zinc-700" : "border-zinc-200";
   const tagBg = isDark ? "bg-zinc-700" : "bg-zinc-200";
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [loadingVideo, setLoadingVideo] = useState(true);
+  
+  const player = useVideoPlayer(
+    { uri: videoUrl || "" },
+    (player) => {
+      player.loop = false;
+    }
+  );
+
+  useEffect(() => {
+    setVideoUrl(null);
+  }, [recording.id]);
+  
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      if (!recording.video_path) return;
+
+      const url = await getVideoUrl(recording.video_path);
+      if (!cancelled) setVideoUrl(url);
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [recording.video_path]);
 
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -78,15 +109,20 @@ function ViewModal({
           <View
             className={`w-full rounded-2xl items-center justify-center mb-6 border ${isDark ? "bg-zinc-800 border-zinc-700" : "bg-zinc-100 border-zinc-200"}`}
             style={{ height: 200 }}
-          >
-            <Pressable
-              className={`w-14 h-14 rounded-full items-center justify-center ${isDark ? "bg-white" : "bg-black"}`}
-              accessibilityRole="button"
-              accessibilityLabel="Play recording"
-            >
-              <Text className={`text-xl ${isDark ? "text-black" : "text-white"}`}>▶</Text>
-            </Pressable>
-            {/* Duration will be added once video upload is wired up */}
+          > 
+            {videoUrl ? (
+              <VideoView
+                player={player}
+                allowsFullscreen
+                allowsPictureInPicture
+                nativeControls
+                style={{ width: "100%", height: "100%" }}
+              />
+            ) : (
+              <View className="flex-1 items-center justify-center">
+                <ActivityIndicator />
+              </View>
+            )}
           </View>
 
           {/* Title & date */}
