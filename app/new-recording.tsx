@@ -218,6 +218,7 @@ export default function NewRecordingScreen() {
 
       const video = await cameraRef.current.recordAsync({
         maxDuration: 10,
+        quality: "1080p",
       });
 
       console.log("VIDEO RESULT:", video);
