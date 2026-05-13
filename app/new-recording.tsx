@@ -115,17 +115,31 @@ export default function NewRecordingScreen() {
     try {
       setError(null);
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+      
+    const stream = await navigator.mediaDevices.getUserMedia({
+    video: { 
+      width: { ideal: 1920 }, 
+      height: { ideal: 1080 },
+      frameRate: { ideal: 30 }
+    },
+    audio: true,
+  });
+  
+    //print video resolution (should always be 1920x1080 due to constraints)
+    const track = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    console.log("Resolution:", settings.width, "x", settings.height);
 
-      streamRef.current = stream;
+    streamRef.current = stream;
 
-      const recorder = new MediaRecorder(stream);
+    const recorder = new MediaRecorder(stream, {
+      mimeType: "video/webm",
+      videoBitsPerSecond: 8_000_000, // 8 Mbps
+    });
       mediaRecorderRef.current = recorder;
 
       chunksRef.current = [];
+     
 
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -215,7 +229,10 @@ export default function NewRecordingScreen() {
       }
 
       setVideoUri(video.uri);
-
+      //Print video resolution
+      const info = await VideoThumbnails.getThumbnailAsync(video.uri, { time: 0 });
+      console.log("Resolution:", info.width, "x", info.height);
+      
     } catch (e) {
       console.log(e);
       setError("Recording failed");
