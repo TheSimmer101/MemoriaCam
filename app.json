@@ -43,7 +43,9 @@
       ],
       "@react-native-google-signin/google-signin",
       "expo-web-browser",
-      "expo-audio"
+      "expo-audio",
+      "expo-video",
+      "react-native-compressor"
     ],
     "experiments": {
       "typedRoutes": true,

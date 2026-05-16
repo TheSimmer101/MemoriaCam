@@ -31,12 +31,64 @@ export function useEntries() {
     setLoading(false);
   }
 
-  async function createEntry(title: string, body_text?: string) {
+  async function saveVideo(
+    file: Blob | { uri: string; type?: string; name?: string }
+  ) {
+    const isWeb = file instanceof Blob;
+    const ext = "mp4";
+    const fileName = `${Date.now()}.${ext}`;
+
+    let uploadData: Blob | FormData;
+    let contentType = "video/mp4";
+
+    // WEB
+    if (file instanceof Blob) {
+      uploadData = new File([file], fileName, {
+        type: "video/mp4",
+      });
+
+      contentType = "video/mp4";
+    }
+
+    // NATIVE (Expo)
+    else {
+      const formData = new FormData();
+
+
+      formData.append("file", {
+        uri: file.uri,
+        name: fileName,
+        type: file.type || "video/mp4",
+      } as any);
+
+      uploadData = formData;
+    }
+
+    const { data, error } = await supabase.storage
+      .from("Videos")
+      .upload(fileName, uploadData, {
+        contentType,
+        upsert: false,
+      });
+
+    if (error) {
+      console.log("UPLOAD ERROR:", error);
+      throw error;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("Videos")
+      .getPublicUrl(data.path);
+
+    return data.path;
+  }
+
+  async function createEntry(title: string, body_text?: string, video_url?: string) {
     const { data: { user } } = await supabase.auth.getUser();
 
     const { data, error } = await supabase
       .from('journal_entries')
-      .insert({ title, body_text, user_id: user?.id })
+      .insert({ title, body_text, video_path: video_url, user_id: user?.id })
       .select()
       .single();
 
@@ -103,5 +155,5 @@ export function useEntries() {
     }
   }
 
-  return { entries, loading, error, createEntry, deleteEntry, updateEntry, saveTags, refetch: fetchEntries };
+  return { entries, loading, error, createEntry, deleteEntry, updateEntry, saveTags, saveVideo, refetch: fetchEntries };
 }

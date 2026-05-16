@@ -13,8 +13,10 @@ import {
     Modal
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import {Video, ResizeMode} from "expo-av"
+import * as VideoThumbnails from 'expo-video-thumbnails';
+import {Image} from "expo-image"
 
 const SUGGESTED_TAGS = [
   "morning", "evening", "gratitude", "reflection",
@@ -25,7 +27,7 @@ export default function NewRecordingScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const isDark = colorScheme === "dark";
 
-  const { createEntry, saveTags } = useEntries();
+  const { createEntry, saveTags, saveVideo } = useEntries();
 
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
@@ -48,12 +50,44 @@ export default function NewRecordingScreen() {
 
   const cameraRef = useRef<any>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const recorded = !!videoUri
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const [showFullVideo, setShowFullVideo] = useState(false);
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
+  const [thumbnailUri, setThumbnailUri] = useState<string | null>(null);
+  const [showThumbnail, setShowThumbnail] = useState(false);
+
+  useEffect(() => {
+  if (!videoUri) return;
+
+  let cancelled = false;
+
+  async function run() {
+    try {
+      if (!videoUri) return;
+
+      const uri = videoUri;
+
+      const thumb = await generateThumbnail(uri);
+
+      if (!cancelled) {
+        console.log("THUMB GENERATED:", thumb);
+        setThumbnailUri(thumb);
+      }
+    } catch (e) {
+      console.log("Thumbnail effect error:", e);
+    }
+  }
+  run();
+
+  return () => {
+    cancelled = true;
+  };
+}, [videoUri]);
 
   function toggleTag(tag: string) {
     setSelectedTags((prev) =>
@@ -81,17 +115,31 @@ export default function NewRecordingScreen() {
     try {
       setError(null);
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+      
+    const stream = await navigator.mediaDevices.getUserMedia({
+    video: { 
+      width: { ideal: 1920 }, 
+      height: { ideal: 1080 },
+      frameRate: { ideal: 30 }
+    },
+    audio: true,
+  });
+  
+    //print video resolution (should always be 1920x1080 due to constraints)
+    const track = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    console.log("Resolution:", settings.width, "x", settings.height);
 
-      streamRef.current = stream;
+    streamRef.current = stream;
 
-      const recorder = new MediaRecorder(stream);
+    const recorder = new MediaRecorder(stream, {
+      mimeType: "video/webm",
+      videoBitsPerSecond: 8_000_000, // 8 Mbps
+    });
       mediaRecorderRef.current = recorder;
 
       chunksRef.current = [];
+     
 
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -104,6 +152,8 @@ export default function NewRecordingScreen() {
           type: "video/webm",
         });
 
+        setVideoBlob(blob);
+
         const url = URL.createObjectURL(blob);
 
         setVideoUri(url);
@@ -114,7 +164,7 @@ export default function NewRecordingScreen() {
       recordingRef.current = true;
     } catch (e) {
       console.log(e);
-      setError("Web recording failed (camera permission?)");
+      setError("Web recording failed");
     }
   }
 
@@ -136,9 +186,17 @@ export default function NewRecordingScreen() {
     }
     
     try {
-      if (!permission?.granted) {
-        const result = await requestPermission();
-        if (!result.granted) return;
+      const cam = await requestPermission();
+      const mic = await requestMicPermission();
+
+      if(!cam.granted){
+        setError("Camera permission denied. Please enable permission");
+        return;
+      }
+
+      if(!mic.granted){
+        setError("Microphone permission denied. Please enable permission");
+        return;
       }
 
       setIsRecording(true);
@@ -159,17 +217,23 @@ export default function NewRecordingScreen() {
       }
 
       const video = await cameraRef.current.recordAsync({
-        maxDuration: 60,
+        maxDuration: 10,
+        quality: "1080p",
       });
 
-      // Log of Video
       console.log("VIDEO RESULT:", video);
-      // prevent stale state updates after stop
-      if (!recordingRef.current) return;
-
-      if (video?.uri) {
-        setVideoUri(video.uri);
+    
+      if (!video?.uri){
+        setError("Recording failed - no video returned");
+        setIsRecording(false);
+        return;
       }
+
+      setVideoUri(video.uri);
+      //Print video resolution
+      const info = await VideoThumbnails.getThumbnailAsync(video.uri, { time: 0 });
+      console.log("Resolution:", info.width, "x", info.height);
+      
     } catch (e) {
       console.log(e);
       setError("Recording failed");
@@ -191,14 +255,47 @@ export default function NewRecordingScreen() {
     setIsRecording(false);
   }
 
+  async function generateThumbnail(videoUri: string) {
+    if (Platform.OS === "web") {
+      return new Promise<string | null>((resolve) => {
+        const video = document.createElement("video");
+        video.src = videoUri;
+        video.currentTime = 1;
+
+        video.onloadeddata = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(video, 0, 0);
+
+          resolve(canvas.toDataURL("image/jpeg"));
+        };
+
+        video.onerror = () => resolve(null);
+      });
+    }
+
+    try {
+      const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
+        time: 1000,
+      });
+
+      return uri;
+    } catch (e) {
+      console.log("Thumbnail error:", e);
+      return null;
+    }
+  }
+
   async function handleSave() {
     setError(null);
-
-    //Commented out for testing since video recording isnt wired up
-    // if (!recorded) {
-    //   setError("Please record a video before saving.");
-    //   return;
-    // }
+        
+     if (!videoBlob && !videoUri) {
+       setError("Please record a video before saving.");
+       return;
+     }
     if (!title.trim()) {
       setError("Please add a title for your recording.");
       return;
@@ -206,7 +303,14 @@ export default function NewRecordingScreen() {
 
     setSaving(true);
     try {
-      const { data, error: saveError } = await createEntry(title.trim(), note.trim());
+      const file: Blob | { uri: string; type?: string; name?: string } =
+        Platform.OS === "web"
+          ? (videoBlob as Blob)
+          : { uri: videoUri!, type: "video/mp4" };
+
+      const videoUrl = await saveVideo(file);
+
+      const { data, error: saveError } = await createEntry(title.trim(), note.trim(), videoUrl);
       if (saveError) throw saveError;
 
       // Save tags if any were selected
@@ -216,11 +320,20 @@ export default function NewRecordingScreen() {
 
       router.back();
     } catch (e) {
+      console.log("SAVE ERROR:", e);
       setError("Something went wrong. Please try again.");
+      setError(String(e));
     } finally {
       setSaving(false);
     }
   }
+
+  console.log("STATE:", {
+    videoUri,
+    thumbnailUri,
+    recorded,
+    isRecording,
+  });
 
   return (
     <SafeAreaView className={`flex-1 ${bg}`} edges={["top"]}>
@@ -265,7 +378,6 @@ export default function NewRecordingScreen() {
             className={`w-full rounded-2xl items-center justify-center mb-6 border ${cardBg} ${cardBorder}`}
             style={{ height: 220 }}         
           >
-            {permission?.granted && isRecording && !videoUri && (
               <CameraView
                 ref={cameraRef}
                 style={{
@@ -275,8 +387,8 @@ export default function NewRecordingScreen() {
                   opacity: 0,
                 }}
                 mode="video"
+                facing='front'
               />
-            )}
 
             {recorded ? (
               <View className="items-center">
@@ -294,9 +406,22 @@ export default function NewRecordingScreen() {
                   </Text>
                 </Pressable>
 
+                {thumbnailUri && (
+                  <Pressable
+                    className="mt-2 px-3 py-1 rounded-md bg-black"
+                    onPress={() => {
+                      setShowThumbnail(true);
+                    }}
+                  >
+                    <Text className="text-white text-xs">
+                      Preview Thumbnail
+                    </Text>
+                  </Pressable>
+                )}
+
                 <Pressable
                   className="mt-3 active:opacity-60"
-                  onPress={() => { setVideoUri(null); setIsRecording(false); }}
+                  onPress={() => { setVideoUri(null); setIsRecording(false); setThumbnailUri(null)}}
                   accessibilityRole="button"
                   accessibilityLabel="Re-record video"
                 >
@@ -508,6 +633,31 @@ export default function NewRecordingScreen() {
             <Text style={{ color: "white", fontSize: 18 }}>✕</Text>
           </Pressable>
 
+        </View>
+      </Modal>
+      <Modal visible={showThumbnail} transparent animationType="fade">
+        <View style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.95)",
+          justifyContent: "center",
+          alignItems: "center",
+        }}>
+          <Image
+            source={{ uri: thumbnailUri! }}
+            style={{
+              width: "90%",
+              height: 450,
+              borderRadius: 12,
+            }}
+            contentFit="contain"
+          />
+
+          <Pressable
+            onPress={() => setShowThumbnail(false)}
+            style={{ marginTop: 20 }}
+          >
+            <Text style={{ color: "white" }}>Close</Text>
+          </Pressable>
         </View>
       </Modal>
     </SafeAreaView>
