@@ -2,7 +2,6 @@ import { useEntries } from '@/hooks/useEntries';
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { router, useFocusEffect } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
-import { SignOutButton } from "@/components/ui/authMenu";
 import { supabase } from '../../lib/supabase';
 import {
   ActivityIndicator,
@@ -236,7 +235,7 @@ function FilterDropdown({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function DashboardScreen() {
-  const colorScheme = useColorScheme() ?? "light";
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
 
   // ── Auth — kept from teammate's version ──
@@ -353,14 +352,21 @@ export default function DashboardScreen() {
   if (loading) return <ActivityIndicator style={{ flex: 1 }} />;
 
   return (
-    <SafeAreaView className={`flex-1 ${bg}`} edges={["top"]}>
+    <SafeAreaView key={colorScheme} className={`flex-1 ${bg}`} edges={["top"]}>
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
 
         {/* Top bar — SignOutButton kept from teammate */}
         <View className={`px-6 py-4 flex-row items-center justify-between border-b ${cardBorder}`}>
           <Text className={`text-base font-bold tracking-tight ${textPrimary}`}>MemoriaCam</Text>
           <View className="flex-row items-center gap-3">
-            <SignOutButton onSuccessfulLogin={() => router.replace('/login')} />
+            <Pressable
+              onPress={() => router.push("/settings")}
+              className="active:opacity-60"
+              accessibilityRole="button"
+              accessibilityLabel="Settings"
+            >
+              <Text className={`text-xl ${textMuted}`}>⚙️</Text>
+            </Pressable>
             <Pressable
               className="bg-black rounded-lg px-4 py-2 active:opacity-70"
               accessibilityRole="button"

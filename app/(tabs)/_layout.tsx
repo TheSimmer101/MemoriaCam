@@ -9,7 +9,7 @@ function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
 }
 
 export default function TabsLayout() {
-  const colorScheme = useColorScheme() ?? "light";
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
 
   return (

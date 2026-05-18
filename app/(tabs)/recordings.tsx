@@ -277,7 +277,7 @@ function EditModal({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function RecordingsScreen() {
-  const colorScheme = useColorScheme() ?? "light";
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
 
   
@@ -335,7 +335,7 @@ export default function RecordingsScreen() {
   }
 
   return (
-    <SafeAreaView className={`flex-1 ${bg}`} edges={["top"]}>
+    <SafeAreaView key={colorScheme} className={`flex-1 ${bg}`} edges={["top"]}>
       {/* Header */}
       <View className={`px-6 py-4 flex-row items-center justify-between border-b ${cardBorder}`}>
         <Text className={`text-base font-bold ${textPrimary}`}>My Recordings</Text>

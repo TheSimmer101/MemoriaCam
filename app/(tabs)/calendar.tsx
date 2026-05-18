@@ -49,7 +49,7 @@ function isoToDateKey(iso: string): string {
 }
 
 export default function CalendarScreen() {
-  const colorScheme = useColorScheme() ?? "light";
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
 
   const today = new Date();
@@ -153,7 +153,7 @@ export default function CalendarScreen() {
   const selectedEntries = selectedDate ? (entriesByDate[selectedDate] ?? []) : [];
 
   return (
-    <SafeAreaView className={`flex-1 ${bg}`} edges={["top"]}>
+    <SafeAreaView key={colorScheme} className={`flex-1 ${bg}`} edges={["top"]}>
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 48 }}
