@@ -6,10 +6,18 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-
+import { ThemeProvider as AppThemeProvider } from "../context/ThemeContext";
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  return (
+    <AppThemeProvider>
+      <ThemedApp />
+    </AppThemeProvider>
+  );
+}
+
+function ThemedApp() {
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const hasNavigated = useRef(false);
@@ -18,9 +26,7 @@ export default function RootLayout() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
     });
-
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      // Handle all possible auth events
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
         setIsAuthenticated(!!session);
       } else if (event === 'SIGNED_OUT') {
@@ -28,11 +34,9 @@ export default function RootLayout() {
         hasNavigated.current = false;
       }
     });
-
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // Navigate based on auth state changes
   useEffect(() => {
     if (isAuthenticated === null) return;
     if (isAuthenticated && !hasNavigated.current) {
@@ -48,13 +52,13 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-        {/* Always declare all screens — let router.replace handle navigation */}
         <Stack>
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="sign-up" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="new-recording" options={{ headerShown: false, presentation: 'card' }} />
           <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+          <Stack.Screen name="settings" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: "modal", title: "Details" }} />
         </Stack>
         <StatusBar style={isDark ? "light" : "dark"} />
