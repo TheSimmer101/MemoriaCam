@@ -15,6 +15,10 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Platform } from 'react-native';
+import * as VideoThumbnails from 'expo-video-thumbnails';
+import {Image} from "expo-image"
+import { VideoView, useVideoPlayer} from 'expo-video'
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 48 - 16) / 3;
@@ -58,12 +62,57 @@ function getUsername(user: any): string {
   );
 }
 
+async function getVideoUrl(path: string) {
+  const { data, error } = await supabase
+    .storage
+    .from("Videos")
+    .createSignedUrl(path, 60 * 60);
+
+  if (error) {
+    console.log("Signed URL error:", error);
+    return null;
+  }
+
+  return data.signedUrl;
+}
+
+
 // ─── View Modal ───────────────────────────────────────────────────────────────
 function ViewModal({ recording, isDark, onClose }: { recording: Recording; isDark: boolean; onClose: () => void }) {
   const textPrimary = isDark ? "text-white" : "text-black";
   const textMuted = isDark ? "text-zinc-400" : "text-zinc-500";
   const cardBorder = isDark ? "border-zinc-700" : "border-zinc-200";
   const tagBg = isDark ? "bg-zinc-700" : "bg-zinc-200";
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+
+  const player = useVideoPlayer(
+      { uri: videoUrl || "" },
+      (player) => {
+        player.loop = false;
+      }
+    );
+  
+    useEffect(() => {
+      setVideoUrl(null);
+    }, [recording.id]);
+    
+    useEffect(() => {
+      let cancelled = false;
+  
+      async function load() {
+        if (!recording.video_path) return;
+  
+        const url = await getVideoUrl(recording.video_path);
+        if (!cancelled) setVideoUrl(url);
+      }
+  
+      load();
+  
+      return () => {
+        cancelled = true;
+      };
+    }, [recording.video_path]);
+  
 
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -82,13 +131,19 @@ function ViewModal({ recording, isDark, onClose }: { recording: Recording; isDar
             className={`w-full rounded-2xl items-center justify-center mb-6 border ${isDark ? "bg-zinc-800 border-zinc-700" : "bg-zinc-100 border-zinc-200"}`}
             style={{ height: 220 }}
           >
-            <Pressable
-              className={`w-14 h-14 rounded-full items-center justify-center ${isDark ? "bg-white" : "bg-black"}`}
-              accessibilityRole="button"
-              accessibilityLabel="Play recording"
-            >
-              <Text className={`text-xl ${isDark ? "text-black" : "text-white"}`}>▶</Text>
-            </Pressable>
+            {videoUrl ? (
+              <VideoView
+                player={player}
+                allowsFullscreen
+                allowsPictureInPicture
+                nativeControls
+                style={{ width: "100%", height: "100%" }}
+              />
+            ) : (
+              <View className="flex-1 items-center justify-center">
+                <ActivityIndicator />
+              </View>
+            )}
           </View>
           <Text className={`text-xl font-bold mb-1 ${textPrimary}`}>{recording.title}</Text>
           <Text className={`text-sm mb-5 ${textMuted}`}>
@@ -121,7 +176,7 @@ function ViewModal({ recording, isDark, onClose }: { recording: Recording; isDar
 }
 
 // ─── Recording Card ───────────────────────────────────────────────────────────
-function RecordingCard({ item, isDark, onPress }: { item: Recording; isDark: boolean; onPress: () => void }) {
+function RecordingCard({ item, isDark, onPress, thumbnail }: { item: Recording; isDark: boolean; onPress: () => void; thumbnail?: string | null }) {
   const cardBg = isDark ? "bg-zinc-800" : "bg-zinc-100";
   const textPrimary = isDark ? "text-white" : "text-black";
   const textMuted = isDark ? "text-zinc-400" : "text-zinc-500";
@@ -130,7 +185,15 @@ function RecordingCard({ item, isDark, onPress }: { item: Recording; isDark: boo
   return (
     <Pressable className="mb-4 active:opacity-75" onPress={onPress} accessibilityRole="button" accessibilityLabel={`View recording: ${item.title}`}>
       <View className={`w-full rounded-xl items-center justify-center mb-2 ${cardBg}`} style={{ height: CARD_WIDTH * 0.85 }}>
+        {thumbnail ? (
+                      <Image
+                        source={{ uri: thumbnail! }}
+                        style={{ width: "100%", height: "100%" }}
+                        contentFit="cover"
+                      />
+                    ) : (
         <Text className="text-2xl opacity-40">▶</Text>
+      )}
       </View>
       <Text className={`text-xs font-semibold mb-0.5 ${textPrimary}`} numberOfLines={1}>{item.title}</Text>
       <Text className={`text-xs mb-1.5 ${textMuted}`} numberOfLines={1}>
@@ -238,6 +301,7 @@ function FilterDropdown({
 export default function DashboardScreen() {
   const colorScheme = useColorScheme() ?? "light";
   const isDark = colorScheme === "dark";
+  const [thumbnails, setThumbnails] = useState<Record<string, string | null>>({});
 
   // ── Auth — kept from teammate's version ──
   const [user, setUser] = useState<any>(null);
@@ -349,6 +413,90 @@ export default function DashboardScreen() {
     setPage((prev) => prev + 1);
     setLoadingMore(false);
   }
+
+     useEffect(() => {
+      let cancelled = false;
+  
+      async function run() {
+        const results: Record<string, string | null> = {};
+  
+        for (const item of entries) {
+          if (!item.video_path) continue;
+          if (thumbnails[item.id]) continue;
+  
+          let videoUrl = item.video_path;
+  
+          if (videoUrl) {
+            const { data, error } = await supabase.storage
+              .from("Videos")
+              .createSignedUrl(videoUrl, 60 * 60);
+  
+            if (!error) {
+              videoUrl = data.signedUrl;
+            } else {
+              console.log("Signed URL error:", error);
+              continue;
+            }
+          }
+  
+          const thumb =
+            Platform.OS === "web"
+              ? await generateWebThumbnail(videoUrl)
+              : await VideoThumbnails.getThumbnailAsync(videoUrl, {
+                  time: 1000,
+                }).then(r => r.uri).catch(() => null);
+  
+          if (!cancelled) {
+            results[item.id] = thumb;
+          }
+        }
+  
+        if (!cancelled) {
+          setThumbnails(prev => ({ ...prev, ...results }));
+        }
+      }
+  
+      if (entries.length > 0) run();
+  
+      return () => {
+        cancelled = true;
+      };
+    }, [entries]);
+
+    async function generateWebThumbnail(videoUri: string): Promise<string | null> {
+      return new Promise((resolve) => {
+        const video = document.createElement("video");
+
+        video.src = videoUri;
+        video.crossOrigin = "anonymous";
+        video.muted = true;
+        video.playsInline = true;
+
+        video.onloadeddata = () => {
+          video.currentTime = 1;
+        };
+
+        video.onseeked = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return resolve(null);
+
+            ctx.drawImage(video, 0, 0);
+
+            resolve(canvas.toDataURL("image/jpeg", 0.7));
+          } catch {
+            resolve(null);
+          }
+        };
+
+        video.onerror = () => resolve(null);
+      });
+    }
+
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} />;
 
@@ -501,13 +649,13 @@ export default function DashboardScreen() {
             <>
               <View className="flex-row gap-4">
                 <View className="flex-1">
-                  {col1.map((item: Recording) => <RecordingCard key={item.id} item={item} isDark={isDark} onPress={() => setViewingRecording(item)} />)}
+                  {col1.map((item: Recording) => <RecordingCard key={item.id} item={item} isDark={isDark} thumbnail={thumbnails[item.id]} onPress={() => setViewingRecording(item)} />)}
                 </View>
                 <View className="flex-1">
-                  {col2.map((item: Recording) => <RecordingCard key={item.id} item={item} isDark={isDark} onPress={() => setViewingRecording(item)} />)}
+                  {col2.map((item: Recording) => <RecordingCard key={item.id} item={item} isDark={isDark} thumbnail={thumbnails[item.id]} onPress={() => setViewingRecording(item)} />)}
                 </View>
                 <View className="flex-1">
-                  {col3.map((item: Recording) => <RecordingCard key={item.id} item={item} isDark={isDark} onPress={() => setViewingRecording(item)} />)}
+                  {col3.map((item: Recording) => <RecordingCard key={item.id} item={item} isDark={isDark} thumbnail={thumbnails[item.id]} onPress={() => setViewingRecording(item)} />)}
                 </View>
               </View>
 
