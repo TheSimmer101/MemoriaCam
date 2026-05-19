@@ -406,19 +406,6 @@ export default function NewRecordingScreen() {
                   </Text>
                 </Pressable>
 
-                {thumbnailUri && (
-                  <Pressable
-                    className="mt-2 px-3 py-1 rounded-md bg-black"
-                    onPress={() => {
-                      setShowThumbnail(true);
-                    }}
-                  >
-                    <Text className="text-white text-xs">
-                      Preview Thumbnail
-                    </Text>
-                  </Pressable>
-                )}
-
                 <Pressable
                   className="mt-3 active:opacity-60"
                   onPress={() => { setVideoUri(null); setIsRecording(false); setThumbnailUri(null)}}
