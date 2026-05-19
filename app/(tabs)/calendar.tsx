@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
+import { router, useFocusEffect } from "expo-router";
 import { VideoView, useVideoPlayer } from "expo-video";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { supabase } from "@/lib/supabase";
@@ -613,10 +614,24 @@ export default function CalendarScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View className={`px-6 py-4 border-b ${cardBorder}`}>
-          <Text className={`text-base font-bold ${textPrimary}`}>Calendar</Text>
-        </View>
+        <View
+          className={`px-6 py-4 border-b ${cardBorder} flex-row items-center justify-between`}
+        >
+          <Text className={`text-base font-bold ${textPrimary}`}>
+            Calendar
+          </Text>
 
+          <Pressable
+            className="bg-black rounded-lg px-4 py-2 active:opacity-70"
+            accessibilityRole="button"
+            accessibilityLabel="New Recording"
+            onPress={() => router.push("/new-recording")}
+          >
+            <Text className="text-white text-sm font-semibold">
+              + New Recording
+            </Text>
+          </Pressable>
+        </View>
         {/* Month navigation */}
         <View className="px-6 py-4 flex-row items-center justify-between">
           <Pressable

@@ -43,15 +43,6 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="recordings"
-        options={{
-          title: "My Recordings",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon icon="🎥" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="calendar"
         options={{
           title: "Calendar",

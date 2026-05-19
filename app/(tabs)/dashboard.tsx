@@ -503,7 +503,7 @@ export default function DashboardScreen() {
     <SafeAreaView key={colorScheme} className={`flex-1 ${bg}`} edges={["top"]}>
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
 
-        {/* Top bar — SignOutButton kept from teammate */}
+        {/* Top bar — SignOutButton */}
         <View className={`px-6 py-4 flex-row items-center justify-between border-b ${cardBorder}`}>
           <Text className={`text-base font-bold tracking-tight ${textPrimary}`}>MemoriaCam</Text>
           <View className="flex-row items-center gap-3">
