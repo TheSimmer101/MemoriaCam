@@ -36,6 +36,7 @@ type Recording = {
   created_at: string;
   body_text: string | null;
   video_path: string | null;
+  duration: number | null;
   tags: { id: string; name: string }[];
 };
 
@@ -45,6 +46,14 @@ function formatDate(iso: string) {
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDuration(totalSeconds: number): string {
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
 }
 
 function getDaysAgo(iso: string) {
@@ -362,10 +371,18 @@ export default function DashboardScreen() {
     new Set(entries.flatMap((e: Recording) => e.tags.map((t) => t.name)))
   ).sort() as string[];
 
+  const totalDurationSeconds = entries.reduce((sum: number, e: Recording) => sum + (e.duration ?? 0), 0);
+
   const STATS = [
     { id: "recordings", icon: "🎥", value: String(totalRecordings), label: "Total Recordings", sublabel: "All time" },
-    { id: "time",       icon: "🕐", value: "—",                      label: "Recording Time",  sublabel: "Coming soon" },
-    { id: "streak",     icon: "🔥", value: String(streak),           label: "Day Streak",      sublabel: streak > 0 ? "Keep it up!" : "Start today!" },
+    {
+      id: "time",
+      icon: "🕐",
+      value: totalDurationSeconds > 0 ? formatDuration(totalDurationSeconds) : "—",
+      label: "Recording Time",
+      sublabel: totalDurationSeconds > 0 ? "All time" : "No data yet",
+    },
+    { id: "streak", icon: "🔥", value: String(streak), label: "Day Streak", sublabel: streak > 0 ? "Keep it up!" : "Start today!" },
   ];
 
   const activeFilterCount = selectedTags.length + (selectedDateRange !== "all" ? 1 : 0);

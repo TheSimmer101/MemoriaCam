@@ -48,6 +48,8 @@ export default function NewRecordingScreen() {
       : "bg-zinc-100 text-black border-zinc-200"
   }`;
 
+  const recordingStartRef = useRef<number | null>(null);
+  const [duration, setDuration] = useState<number | null>(null);
   const cameraRef = useRef<any>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
@@ -151,6 +153,10 @@ export default function NewRecordingScreen() {
         const blob = new Blob(chunksRef.current, {
           type: "video/webm",
         });
+        
+        if (recordingStartRef.current) {
+          setDuration(Math.round((Date.now() - recordingStartRef.current) / 1000));
+        }
 
         setVideoBlob(blob);
 
@@ -159,6 +165,7 @@ export default function NewRecordingScreen() {
         setVideoUri(url);
       };
 
+      recordingStartRef.current = Date.now();
       recorder.start();
       setIsRecording(true);
       recordingRef.current = true;
@@ -199,6 +206,7 @@ export default function NewRecordingScreen() {
         return;
       }
 
+      recordingStartRef.current = Date.now();
       setIsRecording(true);
       recordingRef.current = true;
 
@@ -230,6 +238,11 @@ export default function NewRecordingScreen() {
       }
 
       setVideoUri(video.uri);
+
+      if (recordingStartRef.current) {
+        setDuration(Math.round((Date.now() - recordingStartRef.current) / 1000));
+      }
+
       //Print video resolution
       const info = await VideoThumbnails.getThumbnailAsync(video.uri, { time: 0 });
       console.log("Resolution:", info.width, "x", info.height);
@@ -310,7 +323,7 @@ export default function NewRecordingScreen() {
 
       const videoUrl = await saveVideo(file);
 
-      const { data, error: saveError } = await createEntry(title.trim(), note.trim(), videoUrl);
+      const { data, error: saveError } = await createEntry(title.trim(), note.trim(), videoUrl, duration);
       if (saveError) throw saveError;
 
       // Save tags if any were selected

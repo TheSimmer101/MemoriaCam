@@ -83,22 +83,21 @@ export function useEntries() {
     return data.path;
   }
 
-  async function createEntry(title: string, body_text?: string, video_url?: string) {
+  async function createEntry(title: string, body_text?: string, video_url?: string, duration?: number | null) {
     const { data: { user } } = await supabase.auth.getUser();
 
     const { data, error } = await supabase
       .from('journal_entries')
-      .insert({ title, body_text, video_path: video_url, user_id: user?.id })
+      .insert({ title, body_text, video_path: video_url, user_id: user?.id, duration })
       .select()
       .single();
 
     if (error) return { error };
 
-    // Optimistically add to top of list
     setEntries(prev => [{ ...data, tags: [] }, ...prev]);
     return { data };
   }
-
+  
   async function deleteEntry(id: string) {
     const { error } = await supabase
       .from('journal_entries')
