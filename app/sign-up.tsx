@@ -1,4 +1,4 @@
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAppColorScheme } from "../context/ThemeContext";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignUpScreen() {
-  const colorScheme = useColorScheme() ?? "light";
+  const { colorScheme } = useAppColorScheme();
   const isDark = colorScheme === "dark";
 
   const [firstName, setFirstName] = useState("");

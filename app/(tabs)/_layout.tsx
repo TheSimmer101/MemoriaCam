@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAppColorScheme } from "../../context/ThemeContext";
 import { Text } from "react-native";
 
 function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
@@ -9,7 +9,7 @@ function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
 }
 
 export default function TabsLayout() {
-  const { colorScheme } = useColorScheme();
+  const { colorScheme } = useAppColorScheme();
   const isDark = colorScheme === "dark";
 
   return (

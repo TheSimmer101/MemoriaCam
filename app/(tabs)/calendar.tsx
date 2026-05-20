@@ -1,4 +1,4 @@
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAppColorScheme } from "../../context/ThemeContext";
 import { crossPlatformAlert } from "@/utils/crossPlatformAlert";
 import { useEffect, useState } from "react";
 import {
@@ -402,7 +402,7 @@ function EditModal({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function CalendarScreen() {
-  const { colorScheme } = useColorScheme();
+  const { colorScheme } = useAppColorScheme();
   const isDark = colorScheme === "dark";
 
   const today = new Date();

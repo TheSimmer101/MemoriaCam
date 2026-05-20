@@ -1,5 +1,5 @@
 import { useEntries } from '@/hooks/useEntries';
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAppColorScheme } from "../context/ThemeContext";
 import { router } from "expo-router";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -24,7 +24,7 @@ const SUGGESTED_TAGS = [
 ];
 
 export default function NewRecordingScreen() {
-  const colorScheme = useColorScheme() ?? "light";
+  const { colorScheme } = useAppColorScheme();
   const isDark = colorScheme === "dark";
 
   const { createEntry, saveTags, saveVideo } = useEntries();
