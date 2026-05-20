@@ -1,6 +1,6 @@
 import { useAppColorScheme } from "../../context/ThemeContext";
 import { crossPlatformAlert } from "@/utils/crossPlatformAlert";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -480,6 +480,12 @@ export default function CalendarScreen() {
     fetchEntries(viewYear, viewMonth);
   }, [viewYear, viewMonth]);
 
+  //Automatically refetch entries after coming back to calendar from a different screen
+  useFocusEffect(
+  useCallback(() => {
+    fetchEntries(viewYear, viewMonth);
+  }, [viewYear, viewMonth])
+);
   // ── Generate thumbnails for visible entries ──────────────────────────────────
 
   useEffect(() => {
