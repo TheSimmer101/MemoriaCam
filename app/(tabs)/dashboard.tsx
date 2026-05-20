@@ -1,5 +1,5 @@
 import { useEntries } from '@/hooks/useEntries';
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAppColorScheme } from "../../context/ThemeContext";
 import { router, useFocusEffect } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from '../../lib/supabase';
@@ -298,7 +298,7 @@ function FilterDropdown({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function DashboardScreen() {
-  const { colorScheme } = useColorScheme();
+  const { colorScheme } = useAppColorScheme();
   const isDark = colorScheme === "dark";
   const [thumbnails, setThumbnails] = useState<Record<string, string | null>>({});
 
