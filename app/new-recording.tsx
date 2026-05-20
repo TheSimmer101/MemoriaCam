@@ -376,19 +376,25 @@ export default function NewRecordingScreen() {
           {/* Camera / Recording area */}
           <View
             className={`w-full rounded-2xl items-center justify-center mb-6 border ${cardBg} ${cardBorder}`}
-            style={{ height: 220 }}         
+            // style={{ height: 220 }}      
+            style={{ aspectRatio: 16/9, width: "50%", alignSelf: "center"}}   
+            // style={{ height: "90%", width: "50%", alignSelf: "center" }}
           >
               <CameraView
                 ref={cameraRef}
-                style={{
+                style={isRecording ? {
+                  position: "absolute",
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  borderRadius: 16,
+                } : {
                   position: "absolute",
                   width: 1,
                   height: 1,
                   opacity: 0,
                 }}
                 mode="video"
-                facing='front'
-              />
+                facing="front"
+            />
 
             {recorded ? (
               <View className="items-center">
